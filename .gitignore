@@ -1,0 +1,11 @@
+*.fits
+*.png
+*.img
+*.gaul
+*.pdf
+*.txt
+*.log
+*.MS/
+*.ms/
+*.pyc
+*.ms.tar
