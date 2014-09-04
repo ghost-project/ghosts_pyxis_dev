@@ -139,21 +139,77 @@ class Ellipse():
         b_counter = 0
         for j in xrange(self.ms.na):
             for k in xrange(j+1,self.ms.na):
-                u_l = self.ms.uvw[(self.ms.A1==j)&(self.ms.A2==k),0]/self.ms.wave
-                v_l = self.ms.uvw[(self.ms.A1==j)&(self.ms.A2==k),1]/self.ms.wave
+                u_l = self.ms.uvw[(self.ms.A1==j)&(self.ms.A2==k),0]#/self.ms.wave
+                v_l = self.ms.uvw[(self.ms.A1==j)&(self.ms.A2==k),1]#/self.ms.wave
                 if u_l <> np.array([]) and v_l <> np.array([]):
                    self.baseline_parm[b_counter,:] = self.determine_transformation(u_l,v_l)
                    self.baseline_parm_n[b_counter,:] = self.determine_transformation(-1*u_l,-1*v_l)
                    self.baseline_l[b_counter] = np.sqrt((self.ms.pos[k,0]-self.ms.pos[j,0])**2 + (self.ms.pos[k,1]-self.ms.pos[j,1])**2)
+                   delta_z = self.ms.pos[j,2]-self.ms.pos[k,2]
+                   print "**************************************"
+                   print "baseline = ",j
+                   print "baseline = ",k
+                   print "delta_z = ",delta_z
+                   print "self.baseline_parm[b_counter,1] = ",self.baseline_parm[b_counter,1]/np.cos(self.ms.dec0)                     
+                   print "**************************************"
                    u_new = (u_l[0])/self.baseline_parm[b_counter,3]
                    v_new = (v_l[0]-self.baseline_parm[b_counter,1])/self.baseline_parm[b_counter,4] 
                    self.theta[b_counter] = np.arccos(u_new)*np.sign(v_new)
                 self.b_number[j,k] = b_counter
                 b_counter = b_counter + 1
                             
+    def test_angle(self,b1,b2):
+        print "#############################"
+        print "b1 = ",b1
+        print "b2 = ",b2
+        delta_x = self.ms.pos[b1,0]-self.ms.pos[b2,0]
+        delta_y = self.ms.pos[b1,1]-self.ms.pos[b2,1]
+        print "X = ",delta_x
+        print "Y = ",delta_y
+        print "Size = ",np.sqrt(delta_x**2+delta_y**2)
+        delta_x_n = delta_x/np.sqrt(delta_x**2 + delta_y**2)
+        delta_y_n = delta_y/np.sqrt(delta_x**2 + delta_y**2)
+        
+        plt.plot([0,delta_x_n],[0,delta_y_n],"b")
+        plt.hold("on")
+        
+        alpha = np.arctan2(delta_y_n,delta_x_n)
+
+        print "alpha = ",alpha*(180/np.pi)
+
+        u = self.ms.uvw[(self.ms.A1==b1)&(self.ms.A2==b2),0]#/self.ms.wave
+        v = self.ms.uvw[(self.ms.A1==b1)&(self.ms.A2==b2),1]#/self.ms.wave
+             
+        u_0 = u[0]
+        v_0 = v[0]
+
+        y_c = self.c_m[b1,b2]
+        a = self.phi_m[b1,b2]
+        theta_v = self.theta_m[b1,b2]
+        
+        v_0 = v_0 - y_c*np.cos(self.ms.dec0)
+
+        u_0 = u_0/a
+        v_0 = v_0/(self.sin_delta*a)
+
+        print "np.sqrt(u_0**2 + v_0**2) = ",np.sqrt(u_0**2+ v_0**2)
+
+        plt.plot([0,u_0],[0,v_0],"r")
+
+        theta = -1*np.arctan2(v_0,u_0)
+        print "theta = ",theta*(180/np.pi)
+        print "theta_v = ",theta_v*(180/np.pi)
+        H = 90 - (theta+alpha)*(180/np.pi)
+        #H = 90 - (theta+alpha)*(180/np.pi)
+        print "H = ",H
+        plt.xlim([-1,1])
+        plt.ylim([-1,1]) 
+        print "##########################################"  
+        plt.show()
+
     def plot_test(self,b1,b2,c="b"):
-        u = self.ms.uvw[(self.ms.A1==b1)&(self.ms.A2==b2),0]/self.ms.wave
-        v = self.ms.uvw[(self.ms.A1==b1)&(self.ms.A2==b2),1]/self.ms.wave
+        u = self.ms.uvw[(self.ms.A1==b1)&(self.ms.A2==b2),0]#/self.ms.wave
+        v = self.ms.uvw[(self.ms.A1==b1)&(self.ms.A2==b2),1]#/self.ms.wave
         a = self.phi_m[b1,b2]
         a_n = self.phi_m[b2,b1]
         y_c = self.c_m[b1,b2]
@@ -266,7 +322,8 @@ class Ellipse():
         self.theta_m = np.zeros((self.ms.na,self.ms.na),dtype=float)
 
         self.sin_delta = np.mean(self.baseline_parm[:,4]/self.baseline_parm[:,3])
-      
+        print "self.sin_delta = ",self.sin_delta
+        print "sin(delta) = ",np.absolute(np.sin(self.ms.dec0))      
         for j in xrange(self.ms.na):
             for k in xrange(j+1,self.ms.na):
                 y_c = self.baseline_parm[self.b_number[j,k],1]
@@ -275,8 +332,8 @@ class Ellipse():
                 theta_v = self.theta[self.b_number[j,k]]
                 self.phi_m[k,j] = -1*b
                 self.phi_m[j,k] = b
-                self.c_m[k,j] = -1*y_c          
-                self.c_m[j,k] = y_c          
+                self.c_m[k,j] = -1*y_c/(np.cos(self.ms.dec0))          
+                self.c_m[j,k] = y_c/(np.cos(self.ms.dec0))          
                 self.theta_m[j,k] = theta_v
                 self.theta_m[k,j] = theta_v
                 self.l[k,j] = l
@@ -299,11 +356,16 @@ class Ellipse():
         v.PICKLENAME = "phi_m"
         file_name = self.ms.p_wrapper.pyxis_to_string(v.PICKLEFILE)
         pickle.dump(self.phi_m, open(file_name, 'wb'))
+        print "self.b_m = ",self.c_m
         v.PICKLENAME = "b_m"
         file_name = self.ms.p_wrapper.pyxis_to_string(v.PICKLEFILE)
         pickle.dump(self.c_m, open(file_name, 'wb'))
+        print "self.theta_m = ",self.theta_m*(180/np.pi)
         v.PICKLENAME = "theta_m"
         file_name = self.ms.p_wrapper.pyxis_to_string(v.PICKLEFILE)
+        print "02-01 = ",(self.theta_m[0,2]-self.theta_m[0,1])*(180/np.pi)
+        print "14-45 = ",(self.theta_m[1,4]-self.theta_m[4,5])*(180/np.pi)
+        print "35-46 = ",(self.theta_m[3,5]-self.theta_m[4,6])*(180/np.pi)
         pickle.dump(self.theta_m, open(file_name, 'wb'))
         v.PICKLENAME = "sin_delta"
         file_name = self.ms.p_wrapper.pyxis_to_string(v.PICKLEFILE)
@@ -311,6 +373,12 @@ class Ellipse():
         v.PICKLENAME = "antnames"
         file_name = self.ms.p_wrapper.pyxis_to_string(v.PICKLEFILE)
         pickle.dump(self.ms.names, open(file_name, 'wb'))
+        v.PICKLENAME = "wave"
+        file_name = self.ms.p_wrapper.pyxis_to_string(v.PICKLEFILE)
+        pickle.dump(self.ms.wave, open(file_name, 'wb'))
+        v.PICKLENAME = "declination"
+        file_name = self.ms.p_wrapper.pyxis_to_string(v.PICKLEFILE)
+        pickle.dump(self.ms.dec0, open(file_name, 'wb'))
            
         #pickle.dump(self.c_m, open(self.MS[2:-4]+'_b_m.p', 'wb'))
         #pickle.dump(self.theta_m, open(self.MS[2:-4]+'_theta_m.p', 'wb'))
@@ -454,7 +522,7 @@ class Mset(object):
       ta=table(ms_v+"ANTENNA")
       tab=table(ms_v+"SPECTRAL_WINDOW",readonly=False)
       self.wave=3e8/tab.getcol("REF_FREQUENCY")[0]
-      print "self.wave = ",tab.getcol("REF_FREQUENCY")[0] 
+      print "self.wave = ",self.wave 
       self.pos = ta.getcol("POSITION")
       self.na=len(ta.getcol("NAME"))
       self.names = ta.getcol("NAME")
@@ -742,36 +810,56 @@ class T_ghost():
         self.l_0 = point_sources[1,1]
         self.m_0 = point_sources[1,2]
         v.MS = MS
-        v.PICKLENAME = "antnames"
-        file_name = self.p_wrapper.pyxis_to_string(v.PICKLEFILE)
-        self.ant_names = pickle.load(open(file_name,"rb"))
 
-        #print "ant_names = ",self.ant_names
-        self.a_list = self.get_antenna(self.antenna,self.ant_names)
-        print "a_list = ",self.a_list
+        if v.MS == "EW_EXAMPLE":
+           self.ant_names = [0,1,2]
+           self.a_list = self.get_antenna(self.antenna,self.ant_names)
+           self.b_m = np.zeros((3,3))          
+           self.theta_m = np.zeros((3,3))          
+           self.phi_m = np.array([(0,3,5),(-3,0,2),(-5,-2,0)]) 
+           self.sin_delta = None
+           self.wave = 3e8/1.45e9
+           self.dec = np.pi/2.0       
+             
+        else:
+           v.PICKLENAME = "antnames"
+           file_name = self.p_wrapper.pyxis_to_string(v.PICKLEFILE)
+           self.ant_names = pickle.load(open(file_name,"rb"))
+
+           #print "ant_names = ",self.ant_names
+           self.a_list = self.get_antenna(self.antenna,self.ant_names)
+           print "a_list = ",self.a_list
        
-        v.PICKLENAME = "phi_m"
-        file_name = self.p_wrapper.pyxis_to_string(v.PICKLEFILE)
-        self.phi_m = pickle.load(open(file_name,"rb"))
-        #self.phi_m =  pickle.load(open(MS[2:-4]+"_phi_m.p","rb"))
+           v.PICKLENAME = "phi_m"
+           file_name = self.p_wrapper.pyxis_to_string(v.PICKLEFILE)
+           self.phi_m = pickle.load(open(file_name,"rb"))
+           #self.phi_m =  pickle.load(open(MS[2:-4]+"_phi_m.p","rb"))
         
-        v.PICKLENAME = "b_m"
-        file_name = self.p_wrapper.pyxis_to_string(v.PICKLEFILE)
-        self.b_m = pickle.load(open(file_name,"rb"))
-        #self.b_m = pickle.load(open(MS[2:-4]+"_b_m.p","rb"))
+           v.PICKLENAME = "b_m"
+           file_name = self.p_wrapper.pyxis_to_string(v.PICKLEFILE)
+           self.b_m = pickle.load(open(file_name,"rb"))
+           #self.b_m = pickle.load(open(MS[2:-4]+"_b_m.p","rb"))
 
-        v.PICKLENAME = "theta_m"
-        file_name = self.p_wrapper.pyxis_to_string(v.PICKLEFILE)
-        self.theta_m = pickle.load(open(file_name,"rb"))
-        #self.theta_m = pickle.load(open(MS[2:-4]+"_theta_m.p","rb"))
+           v.PICKLENAME = "theta_m"
+           file_name = self.p_wrapper.pyxis_to_string(v.PICKLEFILE)
+           self.theta_m = pickle.load(open(file_name,"rb"))
+           #self.theta_m = pickle.load(open(MS[2:-4]+"_theta_m.p","rb"))
         
-        v.PICKLENAME = "sin_delta"
-        file_name = self.p_wrapper.pyxis_to_string(v.PICKLEFILE)
-        self.sin_delta = pickle.load(open(file_name,"rb"))
-        #self.sin_delta = pickle.load(open(MS[2:-4]+"_sin_delta.p","rb"))
+           v.PICKLENAME = "sin_delta"
+           file_name = self.p_wrapper.pyxis_to_string(v.PICKLEFILE)
+           self.sin_delta = pickle.load(open(file_name,"rb"))
+           #self.sin_delta = pickle.load(open(MS[2:-4]+"_sin_delta.p","rb"))
+           self.sin_delta = None
 
-        #print "phi_m = ",self.phi_m
-        #print "b_m = ",self.b_m
+           v.PICKLENAME = "wave"
+           file_name = self.p_wrapper.pyxis_to_string(v.PICKLEFILE)
+           self.wave = pickle.load(open(file_name,"rb"))
+
+           v.PICKLENAME = "declination"
+           file_name = self.p_wrapper.pyxis_to_string(v.PICKLEFILE)
+           self.dec = pickle.load(open(file_name,"rb"))
+           #print "phi_m = ",self.phi_m
+           #print "b_m = ",self.b_m
  
     def get_antenna(self,ant,ant_names):
         if isinstance(ant[0],int) :
@@ -793,10 +881,14 @@ class T_ghost():
             d_list.remove(self.a_list[k])
         return d_list
 
-    def plot_visibilities_pq(self,baseline,u=None,v=None,resolution=0,image_s=0,s=0):
+    def plot_visibilities_pq(self,baseline,u=None,v=None,resolution=0,image_s=0,s=0,wave=None,dec=None,approx=False):
+        if wave == None:
+           wave = self.wave
+        if dec == None:
+           dec = self.dec
         u_temp = u
         v_temp = v
-        u,v,V_G_pq,V_R_pq,phi,delta_b,theta,l_cor,m_cor = self.visibilities_pq_2D(baseline,resolution=resolution,image_s=image_s,s=s)
+        u,v,V_G_pq,V_R_pq,phi,delta_b,theta,l_cor,m_cor = self.visibilities_pq_2D(baseline,resolution=resolution,image_s=image_s,s=s,wave=wave,dec=dec)
        
         uu,vv = np.meshgrid(u,v)
         
@@ -834,7 +926,8 @@ class T_ghost():
         plt.show()
 
         if u_temp <> None:
-           u,v,V_G_pq,V_R_pq,phi,delta_b,theta,l_cor,m_cor = self.visibilities_pq_2D(baseline,u=u_temp,v=v_temp,resolution=resolution,image_s=image_s,s=s)
+           u,v,V_G_pq,V_R_pq,phi,delta_b,theta,l_cor,m_cor = self.visibilities_pq_2D(baseline,u=u_temp,v=v_temp,resolution=resolution,image_s=image_s,s=s,wave=wave,dec=dec)
+           u,v,V_G_pq_app,V_R_pq,phi,delta_b,theta,l_cor,m_cor = self.visibilities_pq_2D(baseline,u=u_temp,v=v_temp,resolution=resolution,image_s=image_s,s=s,wave=wave,dec=dec,approx=True)
            #baseline_new = [0,0]
            #baseline_new[0] = baseline[1]
            #baseline_new[1] = baseline[0]   
@@ -846,14 +939,23 @@ class T_ghost():
            print "V_G_pq = ",V_G_pq.real
            axs[1,0].set_title("Real---$g_{%s,%s}(X_{%s,%s}^{-1}(u,v))$"%(str(baseline[0]),str(baseline[1]),str(baseline[0]),str(baseline[1])))
            axs[1,0].set_xlabel("Timeslot [n]")
-           axs[1,0].set_ylim([0.8,1.2])
-           axs[1,0].plot(V_G_pq.real,'k')
+           #axs[1,0].set_ylim([0.8,1.2])
+           axs[1,0].plot(V_G_pq.real,'k',label="True")
+           if approx:
+              axs[1,0].plot(V_G_pq_app.real,'r',label="Approx")
+              axs[1,0].plot(V_G_pq.real-V_G_pq_app.real+np.mean(V_G_pq_app.real),'b',label="Diff+m")
+              axs[1,0].legend(loc=8,ncol=3,prop={"size":9})
+          
            
 
            axs[1,1].set_title("Imaginary---$g_{%s,%s}(X_{%s,%s}^{-1}(u,v))$"%(str(baseline[0]),str(baseline[1]),str(baseline[0]),str(baseline[1])))
            axs[1,1].set_xlabel("Timeslot [n]")
-           axs[1,1].set_ylim([-0.3,0.2])
-           axs[1,1].plot(V_G_pq.imag,'k')
+           #axs[1,1].set_ylim([-0.3,0.2])
+           axs[1,1].plot(V_G_pq.imag,'k',label="True")
+           if approx:
+              axs[1,1].plot(V_G_pq_app.imag,'r',label="Approx")
+              axs[1,1].plot(V_G_pq.imag-V_G_pq_app.imag,'b',label="Diff")
+              axs[1,1].legend(loc=8,ncol=3,prop={"size":9})
            
 
            axs[0,0].set_title("Real---$r_{%s,%s}(X_{%s,%s}^{-1}(u,v))$"%(str(baseline[0]),str(baseline[1]),str(baseline[0]),str(baseline[1])))
@@ -870,7 +972,11 @@ class T_ghost():
            plt.show()
            
     # resolution --- arcsecond, image_s --- degrees
-    def visibilities_pq_2D(self,baseline,u=None,v=None,resolution=0,image_s=0,s=0):
+    def visibilities_pq_2D(self,baseline,u=None,v=None,resolution=0,image_s=0,s=0,wave=None,dec=None,approx=False):
+        if wave == None:
+           wave = self.wave
+        if dec == None:
+           dec = self.dec
         #SELECTING ONLY SPECIFIC INTERFEROMETERS
         #####################################################
         b_list = self.get_antenna(baseline,self.ant_names)
@@ -879,7 +985,7 @@ class T_ghost():
         #print "d_list = ",d_list
 
         phi = self.phi_m[b_list[0],b_list[1]]
-        delta_b = self.b_m[b_list[0],b_list[1]]
+        delta_b = (self.b_m[b_list[0],b_list[1]]/wave)*np.cos(dec)
         theta = self.theta_m[b_list[0],b_list[1]]
 
 
@@ -902,6 +1008,8 @@ class T_ghost():
 
             b_new = np.delete(self.b_m,d_list,axis = 0)
             b_new = np.delete(b_new,d_list,axis = 1)
+
+            b_new = (b_new/wave)*np.cos(dec)
 
             theta_new = np.delete(self.theta_m,d_list,axis = 0)
             theta_new = np.delete(theta_new,d_list,axis = 1)
@@ -967,7 +1075,7 @@ class T_ghost():
                 v_t = v_t - delta_b
                 #SCALING
                 u_t = u_t/phi
-                v_t = v_t/(self.sin_delta*phi)
+                v_t = v_t/(np.absolute(np.sin(dec))*phi)
                 #ROTATION (Clockwise)
                 u_t_r = u_t*np.cos(theta) + v_t*np.sin(theta)
                 v_t_r = -1*u_t*np.sin(theta) + v_t*np.cos(theta)
@@ -982,7 +1090,7 @@ class T_ghost():
                 #v_t_m = v_t_r
                 #SCALING
                 u_t_m = phi_new*u_t_m
-                v_t_m = phi_new*self.sin_delta*v_t_m
+                v_t_m = phi_new*np.absolute(np.sin(dec))*v_t_m
                 #ADDITION
                 v_t_m = v_t_m + b_new
            
@@ -990,35 +1098,60 @@ class T_ghost():
                 #print "v_t_m = ",v_t_m                
 
                 R = self.A_1 + self.A_2*np.exp(-2*1j*np.pi*(u_t_m*self.l_0+v_t_m*self.m_0))
-                d,Q = np.linalg.eigh(R)
-                D = np.diag(d)
-                Q_H = Q.conj().transpose()
-                abs_d=np.absolute(d)
-                index=abs_d.argmax()
-                if (d[index] >= 0):
-                   g=Q[:,index]*np.sqrt(d[index])
-                else:
-                   g=Q[:,index]*np.sqrt(np.absolute(d[index]))*1j
-                G = np.dot(np.diag(g),temp)
-                G = np.dot(G,np.diag(g.conj()))
-                if self.antenna == "all":
-                   if u_dim2 <> 1:
-                      V_R_pq[i,j] = R[b_list[0],b_list[1]]
-                      V_G_pq[i,j] = G[b_list[0],b_list[1]]
-                   else:
-                      V_R_pq[i] = R[b_list[0],b_list[1]]
-                      V_G_pq[i] = G[b_list[0],b_list[1]]
-                else:
-                   for k in xrange(p_new.shape[0]):
-                       for l in xrange(p_new.shape[1]):
-                           if (p_new[k,l] == b_list[0]) and (q_new[k,l] == b_list[1]):
-                              if u_dim2 <> 1:
-                                 V_R_pq[i,j] = R[k,l]
-                                 V_G_pq[i,j] = G[k,l]
-                              else:
-                                 V_R_pq[i] = R[k,l]+R[l,k]
-                                 V_G_pq[i] = G[k,l]+G[l,k]
 
+                if not approx:
+                   d,Q = np.linalg.eigh(R)
+                   D = np.diag(d)
+                   Q_H = Q.conj().transpose()
+                   abs_d=np.absolute(d)
+                   index=abs_d.argmax()
+                   if (d[index] >= 0):
+                      g=Q[:,index]*np.sqrt(d[index])
+                   else:
+                      g=Q[:,index]*np.sqrt(np.absolute(d[index]))*1j
+                   G = np.dot(np.diag(g),temp)
+                   G = np.dot(G,np.diag(g.conj()))
+                   if self.antenna == "all":
+                      if u_dim2 <> 1:
+                         V_R_pq[i,j] = R[b_list[0],b_list[1]]
+                         V_G_pq[i,j] = G[b_list[0],b_list[1]]
+                      else:
+                         V_R_pq[i] = R[b_list[0],b_list[1]]
+                         V_G_pq[i] = G[b_list[0],b_list[1]]
+                   else:
+                       for k in xrange(p_new.shape[0]):
+                           for l in xrange(p_new.shape[1]):
+                               if (p_new[k,l] == b_list[0]) and (q_new[k,l] == b_list[1]):
+                                  if u_dim2 <> 1:
+                                     V_R_pq[i,j] = R[k,l]
+                                     V_G_pq[i,j] = G[k,l]
+                                  else:
+                                     V_R_pq[i] = R[k,l]
+                                     V_G_pq[i] = G[k,l]
+                else:
+                    R1 = (R - self.A_1)/self.A_2
+                    P = R1.shape[0]
+                    if self.antenna == "all":
+                       G = self.A_1 + ((0.5*self.A_2)/P)*(np.sum(R1[b_list[0],:])+np.sum(R1[:,b_list[1]]))
+                       G = (G + ((0.5*self.A_2)/P)**2*R1[b_list[0],b_list[1]]*np.sum(R1))
+                       if u_dim2 <> 1:
+                          V_R_pq[i,j] = R[b_list[0],b_list[1]]
+                          V_G_pq[i,j] = G
+                       else:
+                          V_R_pq[i] = R[b_list[0],b_list[1]]
+                          V_G_pq[i] = G
+                    else:
+                        for k in xrange(p_new.shape[0]):
+                            for l in xrange(p_new.shape[1]):
+                                if (p_new[k,l] == b_list[0]) and (q_new[k,l] == b_list[1]):
+                                   G = self.A1 + ((0.5*self.A2)/P)*(np.sum(R1[k,:])+np.sum(R1[:,l]))
+                                   G = (G + ((0.5*self.A2)/P)**2*R1[k,l]*np.sum(R1))
+                                   if u_dim2 <> 1:
+                                      V_R_pq[i,j] = R[k,l]
+                                      V_G_pq[i,j] = G
+                                   else:
+                                      V_R_pq[i] = R[k,l]
+                                      V_G_pq[i] = G
         #print "V_G_pq = ",V_G_pq                     
         #if u_dim2 <> 1:
 #   p  lt.contourf(uu,vv,V_G_pq)
@@ -1076,8 +1209,11 @@ class T_ghost():
         return vis
     
     # sigma --- degrees, resolution --- arcsecond, image_s --- degrees
-    def sky_2D(self,resolution,image_s,s,sigma = None,type_w="G-1",avg_v=False,plot=False,mask=False):
-        
+    def sky_2D(self,resolution,image_s,s,sigma = None,type_w="G-1",avg_v=False,plot=False,mask=False,wave=None,dec=None,approx=False):
+        if wave  == None:
+           wave = self.wave           
+        if dec == None:
+           dec = self.dec
         ant_len = len(self.a_list)
         counter = 0
         baseline = [0,0]
@@ -1093,11 +1229,11 @@ class T_ghost():
                    baseline_new = [0,0]
                    baseline_new[0] = baseline[1]
                    baseline_new[1] = baseline[0]
-                   u,v,V_G_qp,V_R_qp,phi,delta_b,theta,l_cor,m_cor = self.visibilities_pq_2D(baseline_new,resolution=resolution,image_s=image_s,s=s)
+                   u,v,V_G_qp,V_R_qp,phi,delta_b,theta,l_cor,m_cor = self.visibilities_pq_2D(baseline_new,resolution=resolution,image_s=image_s,s=s,wave=wave,dec=dec,approx=approx)
                 else:
                    V_G_qp = 0
 
-                u,v,V_G_pq,V_R_pq,phi,delta_b,theta,l_cor,m_cor = self.visibilities_pq_2D(baseline,resolution=resolution,image_s=image_s,s=s)
+                u,v,V_G_pq,V_R_pq,phi,delta_b,theta,l_cor,m_cor = self.visibilities_pq_2D(baseline,resolution=resolution,image_s=image_s,s=s,wave=wave,dec=dec,approx=approx)
 
                 if (k==0) and (j==1):
                    vis = self.vis_function(type_w,avg_v,V_G_pq,V_G_qp,V_R_pq)
@@ -1160,7 +1296,7 @@ class T_ghost():
            plt.ylim([-image_s,image_s])
 
            if mask:
-              self.create_mask_all(plot_v=True)
+              self.create_mask_all(plot_v=True,dec=dec)
            
            #self.create_mask(baseline,plot_v = True)
 
@@ -1187,17 +1323,22 @@ class T_ghost():
         return image,l_old,m_old
 
     # sigma --- degrees, resolution --- arcsecond, image_s --- degrees
-    def sky_pq_2D(self,baseline,resolution,image_s,s,sigma = None,type_w="G-1",avg_v=False,plot=False,mask=False):
+    def sky_pq_2D(self,baseline,resolution,image_s,s,sigma = None,type_w="G-1",avg_v=False,plot=False,mask=False,wave=None,dec=None,label_v=False,save_fig=False,approx=False,difference=False):
+        if wave == None:
+           wave = self.wave
+        if dec == None:
+           dec = self.dec
         
         if avg_v:
            baseline_new = [0,0]
            baseline_new[0] = baseline[1]
            baseline_new[1] = baseline[0]
-           u,v,V_G_qp,V_R_qp,phi,delta_b,theta,l_cor,m_cor = self.visibilities_pq_2D(baseline_new,resolution=resolution,image_s=image_s,s=s)
+           u,v,V_G_qp,V_R_qp,phi,delta_b,theta,l_cor,m_cor = self.visibilities_pq_2D(baseline_new,resolution=resolution,image_s=image_s,s=s,wave=wave,dec=dec,approx=approx)
         else:
            V_G_qp = 0
 
-        u,v,V_G_pq,V_R_pq,phi,delta_b,theta,l_cor,m_cor = self.visibilities_pq_2D(baseline,resolution=resolution,image_s=image_s,s=s)
+        u,v,V_G_pq,V_R_pq,phi,delta_b,theta,l_cor,m_cor = self.visibilities_pq_2D(baseline,resolution=resolution,image_s=image_s,s=s,wave=wave,dec=dec,approx=approx)
+
 
         l_old = np.copy(l_cor)
         m_old = np.copy(m_cor)
@@ -1205,6 +1346,19 @@ class T_ghost():
         N = l_cor.shape[0]
 
         vis = self.vis_function(type_w,avg_v,V_G_pq,V_G_qp,V_R_pq)
+        if difference and approx:
+
+           if avg_v:
+              baseline_new = [0,0]
+              baseline_new[0] = baseline[1]
+              baseline_new[1] = baseline[0]
+              u,v,V_G_qp,V_R_qp,phi,delta_b,theta,l_cor,m_cor = self.visibilities_pq_2D(baseline_new,resolution=resolution,image_s=image_s,s=s,wave=wave,dec=dec,approx=False)
+           else:
+              V_G_qp = 0
+
+           u,v,V_G_pq,V_R_pq,phi,delta_b,theta,l_cor,m_cor = self.visibilities_pq_2D(baseline,resolution=resolution,image_s=image_s,s=s,wave=wave,dec=dec,approx=False)
+           vis2 = self.vis_function(type_w,avg_v,V_G_pq,V_G_qp,V_R_pq)
+           vis = vis2 - vis
 
         #vis = V_G_pq-1
 
@@ -1249,6 +1403,8 @@ class T_ghost():
            cs = plt.imshow(image.real,interpolation = "bicubic", cmap = "jet", extent = [l_cor[0],-1*l_cor[0],m_cor[0],-1*m_cor[0]])
            fig.colorbar(cs)
            self.plt_circle_grid(image_s)
+           if label_v:
+              self.plot_source_labels_pq(baseline,im=image_s,plot_x = False)
 
            #print "amax = ",np.amax(image.real)
            #print "amax = ",np.amax(np.absolute(image))
@@ -1257,44 +1413,60 @@ class T_ghost():
            plt.ylim([-image_s,image_s])
 
            if mask:
-             p = self.create_mask(baseline,plot_v = True)
+             p = self.create_mask(baseline,plot_v = True,dec=dec)
 
-           for k in xrange(len(p)):
-               plt.plot(p[k,1]*(180/np.pi),p[k,2]*(180/np.pi),"kv")
+           #for k in xrange(len(p)):
+           #    plt.plot(p[k,1]*(180/np.pi),p[k,2]*(180/np.pi),"kv")
 
            plt.xlabel("$l$ [degrees]")
            plt.ylabel("$m$ [degrees]")
-           #plt.show()
-        
-           #fig = plt.figure() 
-           #cs = plt.imshow(image.imag,interpolation = "bicubic", cmap = "jet", extent = [l_cor[0],-1*l_cor[0],m_cor[0],-1*m_cor[0]])
-           #fig.colorbar(cs)
-           #self.plt_circle_grid(image_s)
-
-           #plt.xlim([-image_s,image_s])
-           #plt.ylim([-image_s,image_s])
+           plt.title("Baseline "+str(baseline[0])+str(baseline[1])+" --- Real")
            
-           #if mask:
-           #   self.create_mask(baseline,plot_v = True)
+           if save_fig:     
+              plt.savefig("R_pq"+str(baseline[0])+str(baseline[1])+".pdf",bbox_inches="tight") 
+              plt.clf()
+           else:
+              plt.show()
+        
+           fig = plt.figure() 
+           cs = plt.imshow(image.imag,interpolation = "bicubic", cmap = "jet", extent = [l_cor[0],-1*l_cor[0],m_cor[0],-1*m_cor[0]])
+           fig.colorbar(cs)
+           self.plt_circle_grid(image_s)
+           if label_v:
+              self.plot_source_labels_pq(baseline,im=image_s,plot_x = False)
 
-           #plt.xlabel("$l$ [degrees]")
-           #plt.ylabel("$m$ [degrees]")
-           #plt.show()
+           plt.xlim([-image_s,image_s])
+           plt.ylim([-image_s,image_s])
+           
+           if mask:
+              self.create_mask(baseline,plot_v = True,dec=dec)
+
+           plt.xlabel("$l$ [degrees]")
+           plt.title("Baseline "+str(baseline[0])+str(baseline[1])+" --- Imag")
+           plt.ylabel("$m$ [degrees]")
+           if save_fig:     
+              plt.savefig("I_pq"+str(baseline[0])+str(baseline[1])+".pdf",bbox_inches="tight") 
+              plt.clf()
+           else:
+              plt.show()
 
         return image,l_old,m_old
 
     def plt_circle_grid(self,grid_m):
         plt.hold('on')
-        rad = np.arange(0.5,0.5+grid_m,0.5)
+        rad = np.arange(1,1+grid_m,1)
         x = np.linspace(0,1,500)
         y = np.linspace(0,1,500)
 
         x_c = np.cos(2*np.pi*x)
         y_c = np.sin(2*np.pi*y)
         for k in range(len(rad)):
-            plt.plot(rad[k]*x_c,rad[k]*y_c,"k")
+            plt.plot(rad[k]*x_c,rad[k]*y_c,"k",ls=":",lw=0.5)
     
-    def create_mask_all(self,plot_v = False):
+    def create_mask_all(self,plot_v = False,dec=None):
+        if dec == None:
+           dec = self.dec
+        sin_delta = np.absolute(np.sin(dec))
         
         point_sources = np.array([(1,0,0)])
         point_sources = np.append(point_sources,[(1,self.l_0,-1*self.m_0)],axis=0) 
@@ -1347,8 +1519,8 @@ class T_ghost():
                 for j in xrange(theta_new.shape[0]):
                     for k in xrange(j+1,theta_new.shape[0]):
                         if not np.allclose(phi_new[j,k],phi):
-                           l_cordinate = phi_new[j,k]/phi*(np.cos(theta_new[j,k]-theta)*self.l_0+self.sin_delta*np.sin(theta_new[j,k]-theta)*self.m_0)                
-                           m_cordinate = phi_new[j,k]/phi*(np.cos(theta_new[j,k]-theta)*self.m_0-self.sin_delta**(-1)*np.sin(theta_new[j,k]-theta)*self.l_0)                
+                           l_cordinate = phi_new[j,k]/phi*(np.cos(theta_new[j,k]-theta)*self.l_0+sin_delta*np.sin(theta_new[j,k]-theta)*self.m_0)                
+                           m_cordinate = phi_new[j,k]/phi*(np.cos(theta_new[j,k]-theta)*self.m_0-sin_delta**(-1)*np.sin(theta_new[j,k]-theta)*self.l_0)                
                            if plot_v == True:
                               plt.plot(l_cordinate*(180/np.pi),m_cordinate*(180/np.pi),"rx")  
                               plt.plot(-1*l_cordinate*(180/np.pi),-1*m_cordinate*(180/np.pi),"rx")  
@@ -1357,11 +1529,16 @@ class T_ghost():
         
         return point_sources
 
-    def create_mask(self,baseline,plot_v = False):
-        
+    def create_mask(self,baseline,plot_v = False,dec = None,plot_markers = False):
+        if dec == None:
+           dec = self.dec
+        sin_delta = np.absolute(np.sin(dec))
         point_sources = np.array([(1,0,0)])
+        point_sources_labels = np.array([(0,0,0,0)])
         point_sources = np.append(point_sources,[(1,self.l_0,-1*self.m_0)],axis=0) 
+        point_sources_labels = np.append(point_sources_labels,[(baseline[0],baseline[1],baseline[0],baseline[1])],axis=0)
         point_sources = np.append(point_sources,[(1,-1*self.l_0,1*self.m_0)],axis=0) 
+        point_sources_labels = np.append(point_sources_labels,[(baseline[1],baseline[0],baseline[0],baseline[1])],axis=0)
         
         #SELECTING ONLY SPECIFIC INTERFEROMETERS
         #####################################################
@@ -1399,21 +1576,43 @@ class T_ghost():
             theta_new = np.delete(theta_new,d_list,axis = 1)
         #####################################################
         if plot_v == True:
-           plt.plot(0,0,"rx")
-           plt.plot(self.l_0*(180/np.pi),self.m_0*(180/np.pi),"rx")
-           plt.plot(-1*self.l_0*(180/np.pi),-1*self.m_0*(180/np.pi),"rx")
+           if plot_markers:
+              mk_string = self.return_color_marker([0,0])
+              plt.plot(0,0,self.return_color_marker([0,0]),label="(0,0)",mfc='none',ms=5)
+              plt.hold('on')
+              mk_string = self.return_color_marker(baseline)
+              plt.plot(self.l_0*(180/np.pi),self.m_0*(180/np.pi),self.return_color_marker(baseline),label="("+str(baseline[0])+","+str(baseline[1])+")",mfc='none',mec=mk_string[0],ms=5)
+              mk_string = self.return_color_marker([baseline[1],baseline[0]])
+              plt.plot(-1*self.l_0*(180/np.pi),-1*self.m_0*(180/np.pi),self.return_color_marker([baseline[1],baseline[0]]),label="("+str(baseline[1])+","+str(baseline[0])+")",mfc='none',mec=mk_string[0],ms=5)
+           else:             
+              plt.plot(0,0,"rx")
+              plt.plot(self.l_0*(180/np.pi),self.m_0*(180/np.pi),"rx")
+              plt.plot(-1*self.l_0*(180/np.pi),-1*self.m_0*(180/np.pi),"gx")
         for j in xrange(theta_new.shape[0]):
             for k in xrange(j+1,theta_new.shape[0]):
+                #print "Hallo:",j," ",k
                 if not np.allclose(phi_new[j,k],phi):
-                   l_cordinate = phi_new[j,k]/phi*(np.cos(theta_new[j,k]-theta)*self.l_0+self.sin_delta*np.sin(theta_new[j,k]-theta)*self.m_0)                
-                   m_cordinate = phi_new[j,k]/phi*(np.cos(theta_new[j,k]-theta)*self.m_0-self.sin_delta**(-1)*np.sin(theta_new[j,k]-theta)*self.l_0)                
+                   #print "phi = ",phi_new[j,k]/phi
+                   l_cordinate = (phi_new[j,k]*1.0)/(1.0*phi)*(np.cos(theta_new[j,k]-theta)*self.l_0+sin_delta*np.sin(theta_new[j,k]-theta)*self.m_0) 
+                   #print "l_cordinate = ",l_cordinate*(180/np.pi)               
+                   m_cordinate = (phi_new[j,k]*1.0)/(phi*1.0)*(np.cos(theta_new[j,k]-theta)*self.m_0-sin_delta**(-1)*np.sin(theta_new[j,k]-theta)*self.l_0)                
+                   #print "m_cordinate = ",m_cordinate*(180/np.pi)               
                    if plot_v == True:
-                      plt.plot(l_cordinate*(180/np.pi),m_cordinate*(180/np.pi),"rx")  
-                      plt.plot(-1*l_cordinate*(180/np.pi),-1*m_cordinate*(180/np.pi),"gx")  
+                      if plot_markers:
+                         mk_string = self.return_color_marker([j,k])
+                         plt.plot(l_cordinate*(180/np.pi),m_cordinate*(180/np.pi),self.return_color_marker([j,k]),label="("+str(j)+","+str(k)+")",mfc='none',mec=mk_string[0],ms=5)  
+                         mk_string = self.return_color_marker([k,j])
+                         plt.plot(-1*l_cordinate*(180/np.pi),-1*m_cordinate*(180/np.pi),self.return_color_marker([k,j]),label="("+str(k)+","+str(j)+")",mfc='none',mec=mk_string[0],ms=5) 
+                         plt.legend(loc=8,ncol=9,numpoints=1,prop={"size":7},columnspacing=0.1) 
+                      else:
+                         plt.plot(l_cordinate*(180/np.pi),m_cordinate*(180/np.pi),"rx")  
+                         plt.plot(-1*l_cordinate*(180/np.pi),-1*m_cordinate*(180/np.pi),"gx")  
                    point_sources = np.append(point_sources,[(1,l_cordinate,-1*m_cordinate)],axis=0) 
+                   point_sources_labels = np.append(point_sources_labels,[(j,k,baseline[0],baseline[1])],axis=0)
                    point_sources = np.append(point_sources,[(1,-1*l_cordinate,1*m_cordinate)],axis=0) 
+                   point_sources_labels = np.append(point_sources_labels,[(k,j,baseline[0],baseline[1])],axis=0)
         
-        return point_sources
+        return point_sources,point_sources_labels
 
     #window is in degrees, l,m,point_sources in radians, point_sources[k,:] ---> kth point source 
     def extract_flux(self,image,l,m,window,point_sources,plot):
@@ -1495,6 +1694,76 @@ class T_ghost():
        
         return point_sources_real,point_sources_imag          
 
+    def determine_flux_wave_pq(self,baseline,f_min = 1.2,f_max = 1.95,number = 10,resolution=250,image_s=3,s=2,sigma_t=0.05,type_w_t="G-1",window=0.2):
+        f_min = f_min*1e9
+        f_max = f_max*1e9
+        f_v = np.linspace(f_min,f_max,number)
+        wave_v = 3e8/(1.0*f_v)
+
+        mask,point_source_labels = self.create_mask(baseline)
+
+        result =  np.zeros((len(mask),len(wave_v)))
+
+        for k in xrange(len(wave_v)):
+            print "k = ",k
+            print "f_v = ",f_v
+            image,l_v,m_v = self.sky_pq_2D(baseline,resolution,image_s,s,sigma = sigma_t, type_w=type_w_t, avg_v=False, plot=False, wave=wave_v[k])
+            point_real,point_imag = self.extract_flux(image,l_v,m_v,window,mask,False)
+            result[:,k] = point_real[:,0]
+
+        v.PICKLENAME = "freq_results"+"_{0}_{1}".format(*baseline) #freq list, results, mask, point source labels
+        file_name = II(v.PICKLEFILE)
+        f = open(file_name, 'wb')
+        pickle.dump(f_v,f)
+        pickle.dump(result,f)
+        pickle.dump(mask,f)
+        pickle.dump(point_source_labels,f)
+        f.close()
+        return f_v,result,mask,point_source_labels
+
+    def plot_freq_pq(self,baseline,s_index,k=5):
+        v.PICKLENAME = "freq_results"+"_{0}_{1}".format(*baseline) #freq list, results, mask, point source labels
+        file_name = II(v.PICKLEFILE)
+        f = open(file_name, 'rb')
+        f_v = pickle.load(f)
+        result = pickle.load(f)
+        mask = pickle.load(f)
+        p_labels = pickle.load(f)
+        f.close()
+        
+        #Split ghosts into ssecondary suppression, primary suppression ghost and anti-ghost + remaining
+        result_new = result[3:,:]
+        result_new = result_new[s_index,:]
+        
+        p_labels_new = p_labels[3:,:]     
+        p_labels_new = p_labels_new[s_index,:]  
+
+        labels_1 = ['({0},{1},{2},{3})'.format(*s_label) for s_label in p_labels[0:3,:]]
+        m_str = "-"
+        for i in xrange(len(labels_1)):
+            if i == 7:
+               m_str = "--"
+            plt.plot(f_v/1e9,result[i,:],m_str,label = labels_1[i])#lw = 2.0
+            plt.hold('on')
+        plt.legend(prop={'size':10})
+        plt.xlabel("Frequency [GHz]")
+        plt.ylabel("Flux [Jy]")
+        plt.xlim([f_v[0]/1e9,f_v[-1]/1e9])
+        plt.show()
+        labels_1 = ['({0},{1},{2},{3})'.format(*s_label) for s_label in p_labels_new[0:k,:]]
+        m_str = "-"
+        for i in xrange(len(labels_1)):
+            if i == 7:
+               m_str = "--"
+            #plt.plot(f_v/1e9,np.log(abs(result_new[i,:])),m_str,label = labels_1[i])#lw = 2.0
+            plt.plot(f_v/1e9,result_new[i,:],m_str,label = labels_1[i])#lw = 2.0
+            plt.hold('on')
+        plt.legend(prop={'size':10})
+        plt.xlabel("Frequency [GHz]")
+        plt.ylabel("Flux [Jy]")
+        plt.xlim([f_v[0]/1e9,f_v[-1]/1e9])
+        plt.show()
+
     def determine_flux_pos_pq(self,baseline,i_max = 1,number = 10,resolution=250,image_s=3,s=2,sigma_t=0.05,type_w_t="G-1",window=0.2,window_c=0.2):
         l = np.linspace(np.absolute(i_max)*(-1),np.absolute(i_max),number)
         m = np.copy(l)
@@ -1554,7 +1823,72 @@ class T_ghost():
             point_real,point_imag = self.extract_flux(image,l_v,m_v,window,four,False)
             result[:,i] = point_real[:,0]
         return result,A_2_v
-            
+    
+    def dec_graph(self,baseline,dec_min=-90*(np.pi/180),dec_max=-10*(np.pi/180),npoints=100):
+        p_temp = self.create_mask(baseline,plot_v = False,dec = dec_min)
+        p_n = p_temp.shape[0]
+        dec_v = np.linspace(dec_min,dec_max,npoints)
+
+        mask_dec = np.zeros((len(dec_v),p_n,3))
+
+        for k in xrange(len(dec_v)):
+            mask_dec[k,:,:] = self.create_mask(baseline,plot_v=False,dec=dec_v[k])
+        
+        for p in xrange(p_n):
+            plt.plot(mask_dec[:,p,1]*(180/np.pi),mask_dec[:,p,2]*(-180/np.pi),"b")
+            plt.hold('on')
+        plt.plot(mask_dec[0,:,1]*(180/np.pi),mask_dec[0,:,2]*(-180/np.pi),ls="",marker="s",c="r")
+        plt.plot(mask_dec[-1,:,1]*(180/np.pi),mask_dec[-1,:,2]*(-180/np.pi),ls="",marker="^",c="r")
+        plt.xlim([-3,3])
+        plt.ylim([-3,3])
+        self.plt_circle_grid(3)
+        plt.xlabel("$l$ [degrees]")
+        plt.ylabel("$m$ [degrees]")
+        plt.show()
+    
+    def plot_source_labels_pq(self,baseline,im=3,plot_x = False,r=60.0,f_s=6,r_rand = 1):
+        point_sources,point_source_labels = self.create_mask(baseline)
+        plt.hold('on')
+        labels = ['({0},{1})'.format(*s_label) for s_label in point_source_labels[:,0:2]]
+        #labels = ['({0},{1},{2},{3})'.format(*s_label) for s_label in point_source_labels]
+        if plot_x:
+           plt.plot(point_sources[:,1]*(180/np.pi),point_sources[:,2]*(-180/np.pi),ls="",marker="x",c="r")
+        counter = 0
+        for label, x, y in zip(labels, point_sources[:, 1]*(180/np.pi), point_sources[:, 2]*(-180/np.pi)):
+                        
+            delta_r = r + np.random.uniform(0,r_rand)
+            delta_x = x
+            delta_y = y
+            if delta_x == 0:
+               delta_x_new = 0
+               delta_y_new = delta_r
+            else:
+               m = delta_y/delta_x
+               delta_x_new = delta_r/np.sqrt(1 + m**2)
+               if (delta_x < 0):
+                  delta_x_new = delta_x_new*(-1)
+               delta_y_new = delta_x_new*m
+               #if (delta_x_new < 0) and ()
+               print "************************"
+               print "label = ",label
+               print "delta_x =",delta_x_new
+               print "delta_y =",delta_y_new
+               print "m = ",m
+               print "size = ",np.sqrt(delta_x_new**2+delta_y_new**2)
+               print "************************"
+
+            #plt.annotate(label, xy = (x, y), xytext = (delta_x_new, delta_y_new), textcoords = 'offset points', fontsize = 8, ha = 'right', va = 'bottom', bbox = dict(boxstyle = 'round,pad=0.5', fc = 'white', alpha = 0.05), arrowprops = dict(arrowstyle = '->', connectionstyle = 'arc3,rad=0'))
+            plt.annotate(label, xy = (x, y), xytext = (delta_x_new, delta_y_new), textcoords = 'offset points', fontsize = f_s, ha='center', va = 'center',bbox = dict(boxstyle = 'round,pad=0.5', fc = 'white', alpha = 0.05), arrowprops = dict(arrowstyle = '->', connectionstyle = 'arc3,rad=0'))
+       
+    def get_sorted_index_pq(self,baseline,resolution=250,image_s=3,s=2,sigma_t=0.05,type_w_t="G-1",window=0.2):
+        image,l_v,m_v = self.sky_pq_2D(baseline,resolution,image_s,s,sigma = sigma_t, type_w=type_w_t, avg_v=False, plot=False)
+        mask,point_source_labels = self.create_mask(baseline)
+        point_real,point_imag = self.extract_flux(image,l_v,m_v,window,mask,False)
+        point_real = point_real[3:,:]
+        s_index = np.argsort(np.absolute(point_real[:,0]))
+        s_index = s_index[::-1]
+        return s_index
+    
     def determine_top_k_ghosts(self,k=10,resolution=150,image_s=3,s=2,sigma_t=0.05,type_w_t="GT-1",window=0.2):
         baseline_ind = np.array([])
         len_ant = len(self.a_list)
@@ -1600,7 +1934,52 @@ class T_ghost():
         baseline_result = baseline_result[::-1,:]
         print "point_result_fin = ",point_result
         return point_result[0:k,:],baseline_result[0:k,:] 
-                
+    
+    def plot_ghost_images(self,im_s):
+        num_ant = len(self.a_list)
+        counter = 0
+        for j in xrange(num_ant):
+            for k in xrange(j+1,num_ant):
+                counter = counter + 1
+                print "counter = ",counter
+                baseline = [j,k]
+                baseline_r = [k,j]
+                image,l_v,m_v = self.sky_pq_2D(baseline,150,im_s,2,sigma = 0.05,type_w="G-1",avg_v=False,plot=True,mask=True,label_v = False,save_fig=True)
+                image,l_v,m_v = self.sky_pq_2D(baseline_r,150,im_s,2,sigma = 0.05,type_w="G-1",avg_v=False,plot=True,mask=True,label_v = False,save_fig=True)
+
+    def plot_ghost_masks(self,im_s):
+        num_ant = len(self.a_list)
+        counter = 0
+        for j in xrange(num_ant):
+            for k in xrange(j+1,num_ant):
+                counter = counter + 1
+                print "counter = ",counter
+                baseline = [j,k]
+                plt.title("Baseline: "+str(j)+str(k))
+                plt.xlabel("$l$ [degrees]")
+                plt.ylabel("$m$ [degrees]")
+                self.create_mask(baseline,plot_v = True, dec = None, plot_markers = True)
+                self.plt_circle_grid(abs(im_s))
+                plt.axis("image")
+                plt.xlim([-1*abs(im_s),abs(im_s)])
+                plt.ylim([-1*abs(im_s),abs(im_s)])
+                #plt.show()
+                plt.savefig("T_gp_"+str(j)+str(k)+".pdf",bbox_inches="tight") 
+                plt.clf()
+    def return_color_marker(self,baseline):
+        if (baseline[0] == 0) and (baseline[1] == 0):
+           return "ko"
+        if (baseline[0] > baseline[1]):
+           b1 = baseline[1] #color
+           b2 = baseline[0] + 6 #marker
+        else:
+           b1 = baseline[0] #color
+           b2 = baseline[1] #marker
+        c_s = ["b","g","r","c","m","y"]
+        m_s = ["o","v","^","<",">","h","s","p","*","+","x","d"]
+
+        return c_s[b1]+m_s[b2-1]        
+        
 def runall ():
     
         p_wrapper = Pyxis_helper()
@@ -1614,36 +1993,69 @@ def runall ():
         #e = Ellipse(ms_object)
         #e.calculate_baseline_trans()
         #e.create_phi_c()
+        #e.test_angle(0,1)
+        #e.test_angle(2,3)
+        #e.test_angle(4,5)
         #*************************************
         
         point_sources = np.array([(1,0,0),(0.2,(1*np.pi)/180,(0*np.pi)/180)])
         
-        s = Sky_model(ms_object,point_sources)
+        #s = Sky_model(ms_object,point_sources)
         #point_sources = np.array([(0.2,0,0),(-0.01,(-1*np.pi/180),(0*np.pi/180)),(0.012,(1*np.pi/180),(-1*np.pi/180)),(-0.1,(-1*np.pi/180),(-1*np.pi/180))])
         #s.meqskymodel(point_sources,antenna=[4,5])
 
-        s.visibility("CORRECTED_DATA")
+        #s.visibility("CORRECTED_DATA")
         
-        c_eig = Calibration(s.ms,"all","eig_cal",s.total_flux) #0A sum of weight must be positive exception..., AB ---> value error
-        c_eig.read_R("CORRECTED_DATA")
-        c_eig.cal_G_eig()
-        c_eig.write_to_MS("CORRECTED_DATA","GTR")
+        #c_eig = Calibration(s.ms,"all","eig_cal",s.total_flux) #0A sum of weight must be positive exception..., AB ---> value error
+        #c_eig.read_R("CORRECTED_DATA")
+        #c_eig.cal_G_eig()
+        #c_eig.write_to_MS("CORRECTED_DATA","GTR")
 
-        p_wrapper.pybdsm_search_pq([4,5])
+        #p_wrapper.pybdsm_search_pq([4,5])
           
 
-        #u_temp = c_eig.u_m[4,5,:]
-        #v_temp = c_eig.v_m[4,5,:]
+        #u_temp = c_eig.u_m[0,1,:]
+        #v_temp = c_eig.v_m[0,1,:]
 
         #V_G_pq_s = c_eig.G[0,1,:]
         #V_R_pq_s = c_eig.R[0,1,:]
         
         #plt.plot(u_temp,v_temp,'k')
         #plt.show()
-
-        #t = T_ghost(point_sources,"all","KAT7_1445_1x16_12h.ms")
-        #image,l_v,m_v = t.sky_pq_2D([1,3],150,3,2,sigma = 0.05,type_w="GT-1",avg_v=False,plot=True,mask=True)
-        #image,l_v,m_v = t.sky_pq_2D([1,2],150,3,2,sigma = 0.05,type_w="GT-1",avg_v=False,plot=True,mask=True)
+        #longest 1-5
+        #shortest 2-3
+        t = T_ghost(point_sources,"all","EW_EXAMPLE")
+        #image,l_v,m_v = t.sky_pq_2D([0,1],150,3,2,sigma = 0.05,type_w="G-1",avg_v=False,plot=True,mask=True,label_v = False)
+        #image,l_v,m_v = t.sky_pq_2D([0,1],150,3,2,sigma = 0.05,type_w="GT-1",avg_v=False,plot=True,mask=True,label_v = False)
+        #image,l_v,m_v = t.sky_pq_2D([0,2],150,3,2,sigma = 0.05,type_w="G-1",avg_v=False,plot=True,mask=True,label_v = False)
+        #image,l_v,m_v = t.sky_pq_2D([0,2],150,3,2,sigma = 0.05,type_w="GT-1",avg_v=False,plot=True,mask=True,label_v = False)
+        #image,l_v,m_v = t.sky_pq_2D([1,2],150,3,2,sigma = 0.05,type_w="G-1",avg_v=False,plot=True,mask=True,label_v = False)
+        #image,l_v,m_v = t.sky_pq_2D([1,2],150,3,2,sigma = 0.05,type_w="GT-1",avg_v=False,plot=True,mask=True,label_v = False)
+        image,l_v,m_v = t.sky_pq_2D([0,1],150,3,2,sigma = 0.05,type_w="G-1",avg_v=False,plot=True,mask=True,label_v = False,approx=True)
+        #image,l_v,m_v = t.sky_pq_2D([0,1],150,3,2,sigma = 0.05,type_w="G-1",avg_v=False,plot=True,mask=True,label_v = False,approx=True,difference=True)
+        #t.create_mask([2,3],plot_v = True, dec = None, plot_markers = True)
+        #t.plot_ghost_masks(6)
+        #t.plot_ghost_images(6)
+        
+        #plt.show()
+        #image,l_v,m_v = t.sky_pq_2D([1,5],250,5,2,sigma = 0.05,type_w="G-1",avg_v=False,plot=True,mask=True,label_v = True)
+        #s_index = t.get_sorted_index_pq([2,3],resolution=150,image_s=3,s=2,sigma_t=0.05,type_w_t="G-1",window=0.2)
+        #freq,flux,mask,p_labels = t.determine_flux_wave_pq([2,3],f_min = 1.2,f_max = 1.95,number = 30,resolution=150,image_s=4,s=2,sigma_t=0.05,type_w_t="G-1",window=0.2)
+        #freq,flux,mask,p_labels = t.determine_flux_wave_pq([1,5],f_min = 1.2,f_max = 1.95,number = 100,resolution=150,image_s=4,s=2,sigma_t=0.05,type_w_t="G-1",window=0.2)
+        #t.plot_freq_pq([2,3],s_index,k=10)
+        #t.plot_freq_pq([1,5],s_index,k=10)
+        #image,l_v,m_v = t.sky_pq_2D([1,5],150,3,2,sigma = 0.05,type_w="G-1",avg_v=False,plot=True,mask=True,label_v = True)
+        #freq,flux,mask,p_labels = t.determine_flux_wave_pq([2,3],f_min = 1.2,f_max = 1.95,number = 5,resolution=150,image_s=4,s=2,sigma_t=0.05,type_w_t="G-1",window=0.2)
+        #for k in xrange(len(flux)):
+        #    plt.plot(freq,flux[k,:])
+        #    plt.hold('on')
+        #plt.show()
+        #p = t.create_mask([2,3],plot_v = False,dec = -70)
+        #t.dec_graph([2,3],dec_min=-90*(np.pi/180),dec_max=-20*(np.pi/180),npoints=100)
+        #t.dec_graph([1,5],dec_min=-90*(np.pi/180),dec_max=-20*(np.pi/180),npoints=100)
+        #print "p.shape = ",p.shape
+        #image,l_v,m_v = t.sky_pq_2D([2,3],150,3,2,sigma = 0.05,type_w="G-1",avg_v=False,plot=True,mask=True,dec=-20*(np.pi/180))
+        #image,l_v,m_v = t.sky_pq_2D([1,5],150,3,2,sigma = 0.05,type_w="G-1",avg_v=False,plot=True,mask=True,dec=-20*(np.pi/180))
         #image,l_v,m_v = t.sky_pq_2D([1,3],150,3,2,sigma = 0.05,type_w="GT-1",avg_v=False,plot=True,mask=True)
         #image,l_v,m_v = t.sky_pq_2D([0,1],150,3,2,sigma = 0.05,type_w="G-1",avg_v=False,plot=True,mask=True)
         #image,l_v,m_v = t.sky_pq_2D([0,1],150,3,2,sigma = 0.05,type_w="RT-1",avg_v=False,plot=True,mask=True)
@@ -1732,8 +2144,9 @@ def runall ():
         #fig.colorbar(cs)
         #plt.title("33")
         #plt.show()
+        #t.plot_visibilities_pq([1,5],u=u_temp/s.ms.wave,v=v_temp/s.ms.wave,resolution=150,image_s=3,s=1)
 
-        #t.plot_visibilities_pq([4,5],u=u_temp/s.ms.wave,v=v_temp/s.ms.wave,resolution=90,image_s=3,s=1)
+        #t.plot_visibilities_pq([0,1],u=u_temp/s.ms.wave,v=v_temp/s.ms.wave,resolution=150,image_s=3,s=1,approx=True)
         
         # CREATING ONE IMAGE OF A BASELINE AND EXTRACTING THE FLUXES OF THE SOURCES
         #**************************************************************************
