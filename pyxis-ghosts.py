@@ -153,7 +153,8 @@ class Ellipse():
                    print "self.baseline_parm[b_counter,1] = ",self.baseline_parm[b_counter,1]/np.cos(self.ms.dec0)                     
                    print "**************************************"
                    u_new = (u_l[0])/self.baseline_parm[b_counter,3]
-                   v_new = (v_l[0]-self.baseline_parm[b_counter,1])/self.baseline_parm[b_counter,4] 
+                   v_new = (v_l[0]-self.baseline_parm[b_counter,1])/(self.baseline_parm[b_counter,3]*np.sin(self.ms.dec0)) 
+                   #v_new = (v_l[0]-self.baseline_parm[b_counter,1])/self.baseline_parm[b_counter,4] 
                    self.theta[b_counter] = np.arccos(u_new)*np.sign(v_new)
                 self.b_number[j,k] = b_counter
                 b_counter = b_counter + 1
@@ -321,7 +322,8 @@ class Ellipse():
         self.c_m = np.zeros((self.ms.na,self.ms.na),dtype=float)
         self.theta_m = np.zeros((self.ms.na,self.ms.na),dtype=float)
 
-        self.sin_delta = np.mean(self.baseline_parm[:,4]/self.baseline_parm[:,3])
+        #self.sin_delta = np.mean(self.baseline_parm[:,4]/self.baseline_parm[:,3])
+        self.sin_delta = np.sin(self.ms.dec0)
         print "self.sin_delta = ",self.sin_delta
         print "sin(delta) = ",np.absolute(np.sin(self.ms.dec0))      
         for j in xrange(self.ms.na):
@@ -390,10 +392,10 @@ class Pyxis_helper():
        pass
    
    def flip_fits(self):
-       image = self.pyxis_to_string("${imager.RESTORED_IMAGE}")
-       ff = pyfits.open(image,mode="update")
-       ff[0].data[0,0,:,:] = ff[0].data[0,0,::-1,:]
-       ff.close()
+       #image = self.pyxis_to_string("${imager.RESTORED_IMAGE}")
+       #ff = pyfits.open(image,mode="update")
+       #ff[0].data[0,0,:,:] = ff[0].data[0,0,::-1,:]
+       #ff.close()
        image = self.pyxis_to_string("${imager.DIRTY_IMAGE}")
        ff = pyfits.open(image,mode="update")
        ff[0].data[0,0,:,:] = ff[0].data[0,0,::-1,:]
@@ -858,9 +860,17 @@ class T_ghost():
            v.PICKLENAME = "declination"
            file_name = self.p_wrapper.pyxis_to_string(v.PICKLEFILE)
            self.dec = pickle.load(open(file_name,"rb"))
-           #print "phi_m = ",self.phi_m
-           #print "b_m = ",self.b_m
- 
+           print "phi_m = ",self.phi_m
+           print "b_m = ",self.b_m
+           print "theta_m =",self.theta_m 
+           print "dec = ",self.dec*(180/np.pi)
+           print "phi_m/lambda = ",self.phi_m/self.wave
+           print "b_m = ",(self.b_m*np.cos(self.dec))/self.wave
+           print "1/wave =",3e8/self.wave
+           print "wave =",self.wave
+           
+           
+
     def get_antenna(self,ant,ant_names):
         if isinstance(ant[0],int) :
            return np.array(ant)
@@ -977,6 +987,8 @@ class T_ghost():
            wave = self.wave
         if dec == None:
            dec = self.dec
+
+        sin_delta = np.sin(self.dec)
         #SELECTING ONLY SPECIFIC INTERFEROMETERS
         #####################################################
         b_list = self.get_antenna(baseline,self.ant_names)
@@ -1075,7 +1087,7 @@ class T_ghost():
                 v_t = v_t - delta_b
                 #SCALING
                 u_t = u_t/phi
-                v_t = v_t/(np.absolute(np.sin(dec))*phi)
+                v_t = v_t/(sin_delta*phi)
                 #ROTATION (Clockwise)
                 u_t_r = u_t*np.cos(theta) + v_t*np.sin(theta)
                 v_t_r = -1*u_t*np.sin(theta) + v_t*np.cos(theta)
@@ -1090,7 +1102,7 @@ class T_ghost():
                 #v_t_m = v_t_r
                 #SCALING
                 u_t_m = phi_new*u_t_m
-                v_t_m = phi_new*np.absolute(np.sin(dec))*v_t_m
+                v_t_m = phi_new*sin_delta*v_t_m
                 #ADDITION
                 v_t_m = v_t_m + b_new
            
@@ -1401,6 +1413,7 @@ class T_ghost():
 
            fig = plt.figure() 
            cs = plt.imshow(image.real,interpolation = "bicubic", cmap = "jet", extent = [l_cor[0],-1*l_cor[0],m_cor[0],-1*m_cor[0]])
+           #cs = plt.imshow(np.absolute(image),interpolation = "bicubic", cmap = "jet", extent = [l_cor[0],-1*l_cor[0],m_cor[0],-1*m_cor[0]])
            fig.colorbar(cs)
            self.plt_circle_grid(image_s)
            if label_v:
@@ -1532,7 +1545,8 @@ class T_ghost():
     def create_mask(self,baseline,plot_v = False,dec = None,plot_markers = False):
         if dec == None:
            dec = self.dec
-        sin_delta = np.absolute(np.sin(dec))
+        #sin_delta = np.absolute(np.sin(dec))
+        sin_delta = np.sin(dec)
         point_sources = np.array([(1,0,0)])
         point_sources_labels = np.array([(0,0,0,0)])
         point_sources = np.append(point_sources,[(1,self.l_0,-1*self.m_0)],axis=0) 
@@ -1692,7 +1706,39 @@ class T_ghost():
               point_sources_real[k,0] = 0
               point_sources_imag[k,0] = 0
        
-        return point_sources_real,point_sources_imag          
+        return point_sources_real,point_sources_imag 
+
+    def determine_flux_block_pq(self,baseline,f=1.445,dec=-75*(np.pi/180),l=1*(np.pi/180),m=0*(np.pi/180),A2=0.2,resolution=150,image_s=3,s=2,sigma_t=0.05,type_w_t="G-1",window=0.2):
+             
+        wave_v = 3e8/(1.0*f*1e9)
+        #remember I am resetting the specifications of the sources
+        self.l_0 = l
+        self.m_0 = m
+        self.A_2 = A2
+        
+        mask,point_source_labels = self.create_mask(baseline)
+        image,l_v,m_v = self.sky_pq_2D(baseline,resolution,image_s,s,sigma = sigma_t, type_w=type_w_t, avg_v=False, plot=False, wave=wave_v,dec=dec)
+        point_real,point_imag = self.extract_flux(image,l_v,m_v,window,mask,False)
+
+        na = self.phi_m.shape[0]
+
+        d = np.ones((na,))+0j
+        d = d*point_real[0,0]
+        mat = np.diag(d) 
+
+        for k in xrange(1,len(point_real)):
+            mat[point_source_labels[k,0],point_source_labels[k,1]] = point_real[k,0]+point_imag[k,0]*1j
+
+        print "point_source_label = ",point_source_labels
+        print "point_real = ",point_real
+        print "mat = ",np.absolute(mat)
+       
+        plt.imshow(mat.real,interpolation="nearest")
+        plt.show()
+
+        plt.imshow(np.absolute(mat),interpolation="nearest")
+        plt.show()
+         
 
     def determine_flux_wave_pq(self,baseline,f_min = 1.2,f_max = 1.95,number = 10,resolution=250,image_s=3,s=2,sigma_t=0.05,type_w_t="G-1",window=0.2):
         f_min = f_min*1e9
@@ -1966,6 +2012,7 @@ class T_ghost():
                 #plt.show()
                 plt.savefig("T_gp_"+str(j)+str(k)+".pdf",bbox_inches="tight") 
                 plt.clf()
+    
     def return_color_marker(self,baseline):
         if (baseline[0] == 0) and (baseline[1] == 0):
            return "ko"
@@ -1990,21 +2037,26 @@ def runall ():
 
         #CREATE LINEAR TRANSFORMATION MATRICES
         #*************************************
-        #e = Ellipse(ms_object)
-        #e.calculate_baseline_trans()
-        #e.create_phi_c()
+        e = Ellipse(ms_object)
+        e.calculate_baseline_trans()
+        e.create_phi_c()
         #e.test_angle(0,1)
         #e.test_angle(2,3)
         #e.test_angle(4,5)
         #*************************************
         
         point_sources = np.array([(1,0,0),(0.2,(1*np.pi)/180,(0*np.pi)/180)])
-        
+        #point_sources = np.array([(1j,1*(np.pi/180),1*(np.pi/180)),(0,0,0)])
         #s = Sky_model(ms_object,point_sources)
         #point_sources = np.array([(0.2,0,0),(-0.01,(-1*np.pi/180),(0*np.pi/180)),(0.012,(1*np.pi/180),(-1*np.pi/180)),(-0.1,(-1*np.pi/180),(-1*np.pi/180))])
         #s.meqskymodel(point_sources,antenna=[4,5])
 
         #s.visibility("CORRECTED_DATA")
+        
+        #p_wrapper.image_settings(filter=None)
+        #options = p_wrapper.image_advanced_settings(antenna=[4,5])
+        #imager.make_image(column="CORRECTED_DATA",dirty=options)
+        #p_wrapper.flip_fits()
         
         #c_eig = Calibration(s.ms,"all","eig_cal",s.total_flux) #0A sum of weight must be positive exception..., AB ---> value error
         #c_eig.read_R("CORRECTED_DATA")
@@ -2024,14 +2076,17 @@ def runall ():
         #plt.show()
         #longest 1-5
         #shortest 2-3
-        t = T_ghost(point_sources,"all","EW_EXAMPLE")
-        #image,l_v,m_v = t.sky_pq_2D([0,1],150,3,2,sigma = 0.05,type_w="G-1",avg_v=False,plot=True,mask=True,label_v = False)
+        t = T_ghost(point_sources,"all","KAT7_1445_1x16_12h.ms")
+        image,l_v,m_v = t.sky_pq_2D([4,5],150,3,2,sigma = 0.05,type_w="G-1",avg_v=False,plot=True,mask=True,label_v = False)
+        #t.determine_flux_block_pq(self,baseline,f=1.95,dec=-60*(np.pi/180),l=1*(np.pi/180),m=0*(np.pi/180),A2=0.2,resolution=250,image_s=3,s=2,sigma_t=0.05,type_w_t="G-1",window=0.2):
+        t.determine_flux_block_pq([1,2],f=1.445,dec=-70*(np.pi/180),l=1*(np.pi/180),m=0*(np.pi/180),A2=0.2,resolution=150,image_s=3,s=2,sigma_t=0.05,type_w_t="GTR-R",window=0.2)
+        t.determine_flux_block_pq([1,2],f=1.3,dec=-50*(np.pi/180),l=-1*(np.pi/180),m=1*(np.pi/180),A2=0.2,resolution=150,image_s=3,s=2,sigma_t=0.05,type_w_t="GTR-R",window=0.2)
         #image,l_v,m_v = t.sky_pq_2D([0,1],150,3,2,sigma = 0.05,type_w="GT-1",avg_v=False,plot=True,mask=True,label_v = False)
         #image,l_v,m_v = t.sky_pq_2D([0,2],150,3,2,sigma = 0.05,type_w="G-1",avg_v=False,plot=True,mask=True,label_v = False)
         #image,l_v,m_v = t.sky_pq_2D([0,2],150,3,2,sigma = 0.05,type_w="GT-1",avg_v=False,plot=True,mask=True,label_v = False)
         #image,l_v,m_v = t.sky_pq_2D([1,2],150,3,2,sigma = 0.05,type_w="G-1",avg_v=False,plot=True,mask=True,label_v = False)
         #image,l_v,m_v = t.sky_pq_2D([1,2],150,3,2,sigma = 0.05,type_w="GT-1",avg_v=False,plot=True,mask=True,label_v = False)
-        image,l_v,m_v = t.sky_pq_2D([0,1],150,3,2,sigma = 0.05,type_w="G-1",avg_v=False,plot=True,mask=True,label_v = False,approx=True)
+        #image,l_v,m_v = t.sky_pq_2D([0,1],150,3,2,sigma = 0.05,type_w="G-1",avg_v=False,plot=True,mask=True,label_v = False,approx=True)
         #image,l_v,m_v = t.sky_pq_2D([0,1],150,3,2,sigma = 0.05,type_w="G-1",avg_v=False,plot=True,mask=True,label_v = False,approx=True,difference=True)
         #t.create_mask([2,3],plot_v = True, dec = None, plot_markers = True)
         #t.plot_ghost_masks(6)
