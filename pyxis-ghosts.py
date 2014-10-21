@@ -988,7 +988,7 @@ class T_ghost():
         if dec == None:
            dec = self.dec
 
-        sin_delta = np.sin(self.dec)
+        sin_delta = np.sin(dec)
         #SELECTING ONLY SPECIFIC INTERFEROMETERS
         #####################################################
         b_list = self.get_antenna(baseline,self.ant_names)
@@ -1708,7 +1708,7 @@ class T_ghost():
        
         return point_sources_real,point_sources_imag 
 
-    def determine_flux_block_pq(self,baseline,f=1.445,dec=-75*(np.pi/180),l=1*(np.pi/180),m=0*(np.pi/180),A2=0.2,resolution=150,image_s=3,s=2,sigma_t=0.05,type_w_t="G-1",window=0.2):
+    def determine_flux_block_pq(self,baseline,f=1.445,dec=-74.66*(np.pi/180),l=1*(np.pi/180),m=0*(np.pi/180),A2=0.2,resolution=150,image_s=3,s=2,sigma_t=0.05,type_w_t="G-1",window=0.2):
              
         wave_v = 3e8/(1.0*f*1e9)
         #remember I am resetting the specifications of the sources
@@ -1716,7 +1716,7 @@ class T_ghost():
         self.m_0 = m
         self.A_2 = A2
         
-        mask,point_source_labels = self.create_mask(baseline)
+        mask,point_source_labels = self.create_mask(baseline,dec=dec)
         image,l_v,m_v = self.sky_pq_2D(baseline,resolution,image_s,s,sigma = sigma_t, type_w=type_w_t, avg_v=False, plot=False, wave=wave_v,dec=dec)
         point_real,point_imag = self.extract_flux(image,l_v,m_v,window,mask,False)
 
@@ -1855,6 +1855,77 @@ class T_ghost():
 
         return result,l,m
 
+    def extract_proto_mask(self,baseline,mask,p_labels):
+        p = baseline[0]
+        q = baseline[1]
+        mask1 = np.logical_or(p_labels[:,0]==p,p_labels[:,1]==q)
+        mask2 = np.logical_not(np.logical_and(p_labels[:,0]==p,p_labels[:,1]==q))
+        proto_mask = np.logical_and(mask1,mask2)
+        return mask[proto_mask],p_labels[proto_mask]
+
+    def determine_flux_A2_proto_pq(self,baseline,A_2_min = 0.001, A_2_max = 0.5,number = 20,resolution=250,image_s=3,s=2,sigma_t=0.05,type_w_t="GT-1",window=0.2,l_0 = 1.0*(np.pi/180),m_0=0.0*(np.pi/180),dec=-74.66*(np.pi/180),f=1.445):
+        wave_v = 3e8/(1.0*f*1e9)
+        #remember I am resetting the specifications of the sources
+        self.l_0 = l_0
+        self.m_0 = m_0
+        
+        A_2_v = np.linspace(A_2_min,A_2_max,number)
+        mask,point_source_labels = self.create_mask(baseline,dec=dec)
+        #print "point_source_labels1 = ",point_source_labels
+        mask,point_source_labels = self.extract_proto_mask(baseline,mask,point_source_labels)
+        #print "point_source_labels2 = ",point_source_labels
+        
+        #four = np.array([(1,0,0),(1,self.l_0,-1*self.m_0),(1,-1*self.l_0,self.m_0),(1,2*self.l_0,-2*self.m_0)])
+
+        result_real = np.zeros((len(mask),len(A_2_v)))
+        result_imag = np.zeros((len(mask),len(A_2_v)))
+        result_abs = np.zeros((len(mask),len(A_2_v)))
+        image,l_v,m_v = self.sky_pq_2D(baseline,resolution,image_s,s,sigma = sigma_t, type_w=type_w_t, avg_v=False, plot=True, mask=True, wave=wave_v,dec=dec)
+       
+        for i in xrange(len(A_2_v)):
+            print "i = ",i
+            print "A_2 = ",A_2_v[i] 
+            self.A_2 = A_2_v[i]
+            image,l_v,m_v = self.sky_pq_2D(baseline,resolution,image_s,s,sigma = sigma_t, type_w=type_w_t, avg_v=False, plot=False, wave=wave_v,dec=dec)
+            if i == 0:
+               point_real,point_imag = self.extract_flux(image,l_v,m_v,window,mask,False)
+            else:
+               point_real,point_imag = self.extract_flux(image,l_v,m_v,window,mask,False)
+            result_real[:,i] = point_real[:,0]
+            result_imag[:,i] = point_imag[:,0]
+            result_abs[:,i] = np.sqrt(point_real[:,0]**2+point_imag[:,0]**2)
+        #plt.plot(A_2_v,(result_real[0,:]/(21*A_2_v)*100))
+        #plt.hold('on')
+        #plt.plot(A_2_v,np.absolute(result_imag[0,:]/(21*A_2_v)*100))
+        #plt.plot(A_2_v,(result_abs[0,:]/(21*A_2_v)*100))
+        #plt.ylim([0,0.8])
+        #plt.show() 
+        labels_1 = ['({0},{1},{2},{3})'.format(*s_label) for s_label in point_source_labels]
+        m_str = "-"
+        for i in xrange(len(labels_1)):
+            if i == 7:
+               m_str = "--"
+            plt.plot(A_2_v,(result_real[i,:])/(21*A_2_v)*100,m_str,label = labels_1[i])#lw = 2.0
+            plt.hold('on')
+        plt.legend(prop={'size':10})
+        plt.xlabel("Flux [Jy]")
+        plt.ylabel("% Flux [Jy]")
+        #plt.xlim([f_v[0]/1e9,f_v[-1]/1e9])
+        plt.show()
+        
+        m_str = "-"
+        for i in xrange(len(labels_1)):
+            if i == 7:
+               m_str = "--"
+            plt.plot(A_2_v,(result_abs[i,:])/(21*A_2_v)*100,m_str,label = labels_1[i])#lw = 2.0
+            plt.hold('on')
+        plt.legend(prop={'size':10})
+        plt.xlabel("Flux [Jy]")
+        plt.ylabel("% Flux [Jy]")
+        #plt.xlim([f_v[0]/1e9,f_v[-1]/1e9])
+        plt.show()        
+        return result_real,result_abs,A_2_v
+    
     def determine_flux_A2(self,A_2_min = 0.001, A_2_max = 0.5,number = 20,resolution=250,image_s=3,s=2,sigma_t=0.05,type_w_t="GT-1",window=0.2):
         A_2_v = np.linspace(A_2_min,A_2_max,number)
         four = np.array([(1,0,0),(1,self.l_0,-1*self.m_0),(1,-1*self.l_0,self.m_0),(1,2*self.l_0,-2*self.m_0)])
@@ -2077,10 +2148,12 @@ def runall ():
         #longest 1-5
         #shortest 2-3
         t = T_ghost(point_sources,"all","KAT7_1445_1x16_12h.ms")
-        image,l_v,m_v = t.sky_pq_2D([4,5],150,3,2,sigma = 0.05,type_w="G-1",avg_v=False,plot=True,mask=True,label_v = False)
+        #image,l_v,m_v = t.sky_pq_2D([4,5],150,3,2,sigma = 0.05,type_w="G-1",avg_v=False,plot=True,dec=-50*(np.pi/180),mask=True,label_v = False)
         #t.determine_flux_block_pq(self,baseline,f=1.95,dec=-60*(np.pi/180),l=1*(np.pi/180),m=0*(np.pi/180),A2=0.2,resolution=250,image_s=3,s=2,sigma_t=0.05,type_w_t="G-1",window=0.2):
-        t.determine_flux_block_pq([1,2],f=1.445,dec=-70*(np.pi/180),l=1*(np.pi/180),m=0*(np.pi/180),A2=0.2,resolution=150,image_s=3,s=2,sigma_t=0.05,type_w_t="GTR-R",window=0.2)
-        t.determine_flux_block_pq([1,2],f=1.3,dec=-50*(np.pi/180),l=-1*(np.pi/180),m=1*(np.pi/180),A2=0.2,resolution=150,image_s=3,s=2,sigma_t=0.05,type_w_t="GTR-R",window=0.2)
+        #t.determine_flux_block_pq([1,2],f=1.445,dec=-70*(np.pi/180),l=1*(np.pi/180),m=0*(np.pi/180),A2=0.2,resolution=150,image_s=3,s=2,sigma_t=0.05,type_w_t="GTR-R",window=0.2)
+        #t.determine_flux_block_pq([1,2],f=1.3,dec=-50*(np.pi/180),l=-1*(np.pi/180),m=1*(np.pi/180),A2=0.2,resolution=150,image_s=3,s=2,sigma_t=0.05,type_w_t="GTR-R",window=0.2)
+        t.determine_flux_A2_proto_pq([1,2],A_2_min = 0.001, A_2_max = 0.5,number = 10,resolution=150,image_s=3,s=2,sigma_t=0.05,type_w_t="GTR-R",window=0.2,l_0 = 1.0*(np.pi/180),m_0=0.0*(np.pi/180),dec=-74.66*(np.pi/180),f=1.445)
+        t.determine_flux_A2_proto_pq([1,2],A_2_min = 0.001, A_2_max = 0.5,number = 10,resolution=150,image_s=3,s=2,sigma_t=0.05,type_w_t="GTR-R",window=0.2,l_0 = 1.0*(np.pi/180),m_0=1.0*(np.pi/180),dec=-50*(np.pi/180),f=1.5)
         #image,l_v,m_v = t.sky_pq_2D([0,1],150,3,2,sigma = 0.05,type_w="GT-1",avg_v=False,plot=True,mask=True,label_v = False)
         #image,l_v,m_v = t.sky_pq_2D([0,2],150,3,2,sigma = 0.05,type_w="G-1",avg_v=False,plot=True,mask=True,label_v = False)
         #image,l_v,m_v = t.sky_pq_2D([0,2],150,3,2,sigma = 0.05,type_w="GT-1",avg_v=False,plot=True,mask=True,label_v = False)
