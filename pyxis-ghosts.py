@@ -1377,6 +1377,8 @@ class T_ghost():
         delta_u = u[1]-u[0]
         delta_v = v[1]-v[0]
 
+        vis_old = np.copy(vis)
+
         if sigma <> None:
 
            uu,vv = np.meshgrid(u,v)
@@ -1463,7 +1465,7 @@ class T_ghost():
            else:
               plt.show()
 
-        return image,l_old,m_old
+        return image,l_old,m_old,vis_old,u,v
 
     def plt_circle_grid(self,grid_m):
         plt.hold('on')
@@ -1633,6 +1635,7 @@ class T_ghost():
         window = window*(np.pi/180)
         point_sources_real = np.copy(point_sources)
         point_sources_imag = np.copy(point_sources)
+        point_sources_abs = np.copy(point_sources)
         for k in range(len(point_sources)):
             l_0 = point_sources[k,1]
             m_0 = point_sources[k,2]*(-1)
@@ -1693,6 +1696,7 @@ class T_ghost():
                max_v_i = np.amax(image_sub.imag)
                min_v_r = np.amin(image_sub.real)
                min_v_i = np.amin(image_sub.imag)
+               max_v_a = np.amax(np.absolute(image_sub))
                if np.absolute(max_v_r) > np.absolute(min_v_r):
                   point_sources_real[k,0] = max_v_r
                else:
@@ -1701,12 +1705,14 @@ class T_ghost():
                   point_sources_imag[k,0] = max_v_i
                else:
                   point_sources_imag[k,0] = min_v_i
+               point_sources_abs[k,0] = max_v_a
            
             else:
               point_sources_real[k,0] = 0
               point_sources_imag[k,0] = 0
+              point_sources_abs[k,0] = 0
        
-        return point_sources_real,point_sources_imag 
+        return point_sources_real,point_sources_imag,point_sources_abs 
 
     def determine_flux_block_pq(self,baseline,f=1.445,dec=-74.66*(np.pi/180),l=1*(np.pi/180),m=0*(np.pi/180),A2=0.2,resolution=150,image_s=3,s=2,sigma_t=0.05,type_w_t="G-1",window=0.2):
              
@@ -1863,6 +1869,92 @@ class T_ghost():
         proto_mask = np.logical_and(mask1,mask2)
         return mask[proto_mask],p_labels[proto_mask]
 
+    def create_error_sources(self,A2=0.2,p=0.7,number=10,fov=3):
+        error_sources = np.zeros((number,3),dtype=np.complex64)
+     
+        flux_level = A2 * (5.0/100.0)
+        #flux_level = 0.5
+        alpha =  np.random.uniform(low=0, high=1, size = number)
+        error_sources[:,0] = np.sqrt(alpha)*flux_level + np.sqrt(1-alpha)*flux_level*1j
+        error_sources[:,1] = np.random.uniform(low=-1*np.absolute(fov), high=np.absolute(fov), size = number)*(np.pi/180)
+        error_sources[:,2] = np.random.uniform(low=-1*np.absolute(fov), high=np.absolute(fov), size = number)*(np.pi/180) 
+
+        return error_sources
+
+    def create_vis(self,point_sources,u,v):
+        uu,vv = np.meshgrid(u,v)
+        vis = np.zeros(uu.shape)
+        for k in xrange(len(point_sources)):
+            l0 = point_sources[k,1].real
+            m0 = point_sources[k,2].real
+
+            vis = vis + point_sources[k,0]*np.exp(-2*np.pi*1j*(uu*l0 + vv*m0))
+        return vis
+    
+    def error_sky_pq_2D(self,baseline,l,m,u,v,vis,error_model,dec,sigma=0.05,plot=True,image_s=3.0):
+        vis = vis + self.create_vis(error_model,u,v)
+
+        delta_u = u[1]-u[0]
+        delta_v = v[1]-v[0]
+        N = l.shape[0]
+
+        uu,vv = np.meshgrid(u,v)
+        sigma = (np.pi/180) * sigma
+
+        g_kernal = (2*np.pi*sigma**2)*np.exp(-2*np.pi**2*sigma**2*(uu**2+vv**2))
+       
+        vis = vis*g_kernal
+
+        vis = np.roll(vis,-1*(N-1)/2,axis = 0)
+        vis = np.roll(vis,-1*(N-1)/2,axis = 1)
+        
+        image = np.fft.fft2(vis)*(delta_u*delta_v)
+        
+        image = np.roll(image,1*(N-1)/2,axis = 0)
+        image = np.roll(image,1*(N-1)/2,axis = 1)
+
+        image = image[:,::-1]
+        
+        if plot:
+
+           l_cor = l*(180/np.pi)
+           m_cor = m*(180/np.pi)
+
+           fig = plt.figure() 
+           cs = plt.imshow(image.real,interpolation = "bicubic", cmap = "jet", extent = [l_cor[0],-1*l_cor[0],m_cor[0],-1*m_cor[0]])
+           #cs = plt.imshow(np.absolute(image),interpolation = "bicubic", cmap = "jet", extent = [l_cor[0],-1*l_cor[0],m_cor[0],-1*m_cor[0]])
+           fig.colorbar(cs)
+           self.plt_circle_grid(image_s)
+           p = self.create_mask(baseline,plot_v = True,dec=dec)
+
+           for k in xrange(len(error_model)):
+               plt.plot(error_model[k,1]*(180/np.pi),error_model[k,2]*(180/np.pi),"kx",mfc=None)
+
+           plt.xlim([-image_s,image_s])
+           plt.ylim([-image_s,image_s])
+
+           plt.xlabel("$l$ [degrees]")
+           plt.ylabel("$m$ [degrees]")
+           
+           plt.show()
+        
+           fig = plt.figure() 
+           cs = plt.imshow(image.imag,interpolation = "bicubic", cmap = "jet", extent = [l_cor[0],-1*l_cor[0],m_cor[0],-1*m_cor[0]])
+           fig.colorbar(cs)
+           self.plt_circle_grid(image_s)
+           p = self.create_mask(baseline,plot_v = True,dec=dec)
+
+           for k in xrange(len(error_model)):
+               plt.plot(error_model[k,1]*(180/np.pi),error_model[k,2]*(180/np.pi),"kx",mfc=None)
+           plt.xlim([-image_s,image_s])
+           plt.ylim([-image_s,image_s])
+
+           plt.xlabel("$l$ [degrees]")
+           plt.ylabel("$m$ [degrees]")
+           plt.show()
+
+        return image,l,m
+
     def determine_flux_A2_proto_pq(self,baseline,A_2_min = 0.001, A_2_max = 0.5,number = 20,resolution=250,image_s=3,s=2,sigma_t=0.05,type_w_t="GT-1",window=0.2,l_0 = 1.0*(np.pi/180),m_0=0.0*(np.pi/180),dec=-74.66*(np.pi/180),f=1.445):
         wave_v = 3e8/(1.0*f*1e9)
         #remember I am resetting the specifications of the sources
@@ -1880,20 +1972,27 @@ class T_ghost():
         result_real = np.zeros((len(mask),len(A_2_v)))
         result_imag = np.zeros((len(mask),len(A_2_v)))
         result_abs = np.zeros((len(mask),len(A_2_v)))
-        image,l_v,m_v = self.sky_pq_2D(baseline,resolution,image_s,s,sigma = sigma_t, type_w=type_w_t, avg_v=False, plot=True, mask=True, wave=wave_v,dec=dec)
+        image,l_v,m_v,vis_old,u,v = self.sky_pq_2D(baseline,resolution,image_s,s,sigma = sigma_t, type_w=type_w_t, avg_v=False, plot=True, mask=True, wave=wave_v,dec=dec)
        
         for i in xrange(len(A_2_v)):
             print "i = ",i
             print "A_2 = ",A_2_v[i] 
             self.A_2 = A_2_v[i]
-            image,l_v,m_v = self.sky_pq_2D(baseline,resolution,image_s,s,sigma = sigma_t, type_w=type_w_t, avg_v=False, plot=False, wave=wave_v,dec=dec)
+            error_sources =  self.create_error_sources(A2 = self.A_2,p=0.7,number=10,fov=image_s)
+            print "error_sources = ",error_sources
+            image,l_v,m_v,vis_old,u,v = self.sky_pq_2D(baseline,resolution,image_s,s,sigma = sigma_t, type_w=type_w_t, avg_v=False, plot=False, wave=wave_v,dec=dec)
+            image_error,l_e,m_e = self.error_sky_pq_2D(baseline,l_v,m_v,u,v,vis_old,error_sources,dec,sigma=0.05,plot=True)
+            print "vis_old = ",vis_old
+            print "u = ",u
+            print "v = ",v
             if i == 0:
-               point_real,point_imag = self.extract_flux(image,l_v,m_v,window,mask,False)
+               point_real,point_imag,point_abs = self.extract_flux(image,l_v,m_v,window,mask,False)
             else:
-               point_real,point_imag = self.extract_flux(image,l_v,m_v,window,mask,False)
+               point_real,point_imag,point_abs = self.extract_flux(image,l_v,m_v,window,mask,False)
             result_real[:,i] = point_real[:,0]
             result_imag[:,i] = point_imag[:,0]
-            result_abs[:,i] = np.sqrt(point_real[:,0]**2+point_imag[:,0]**2)
+            #result_abs[:,i] = np.sqrt(point_real[:,0]**2+point_imag[:,0]**2)
+            result_abs[:,i] = point_abs[:,0]
         #plt.plot(A_2_v,(result_real[0,:]/(21*A_2_v)*100))
         #plt.hold('on')
         #plt.plot(A_2_v,np.absolute(result_imag[0,:]/(21*A_2_v)*100))
@@ -1906,6 +2005,19 @@ class T_ghost():
             if i == 7:
                m_str = "--"
             plt.plot(A_2_v,(result_real[i,:])/(21*A_2_v)*100,m_str,label = labels_1[i])#lw = 2.0
+            plt.hold('on')
+        plt.legend(prop={'size':10})
+        plt.xlabel("Flux [Jy]")
+        plt.ylabel("% Flux [Jy]")
+        #plt.xlim([f_v[0]/1e9,f_v[-1]/1e9])
+        plt.show()
+        
+        labels_1 = ['({0},{1},{2},{3})'.format(*s_label) for s_label in point_source_labels]
+        m_str = "-"
+        for i in xrange(len(labels_1)):
+            if i == 7:
+               m_str = "--"
+            plt.plot(A_2_v,(result_imag[i,:])/(21*A_2_v)*100,m_str,label = labels_1[i])#lw = 2.0
             plt.hold('on')
         plt.legend(prop={'size':10})
         plt.xlabel("Flux [Jy]")
@@ -2148,12 +2260,14 @@ def runall ():
         #longest 1-5
         #shortest 2-3
         t = T_ghost(point_sources,"all","KAT7_1445_1x16_12h.ms")
-        #image,l_v,m_v = t.sky_pq_2D([4,5],150,3,2,sigma = 0.05,type_w="G-1",avg_v=False,plot=True,dec=-50*(np.pi/180),mask=True,label_v = False)
+        #image,l_v,m_v,vis_old,u,v = t.sky_pq_2D([4,5],150,3,2,sigma = 0.05,type_w="G-1",avg_v=False,plot=True,dec=-74.66*(np.pi/180),mask=True,label_v = False)
+        #image,l_v,m_v,vis_old,u,v = t.sky_pq_2D([4,5],130,3,2,sigma = 0.1,type_w="G-1",avg_v=False,plot=True,dec=-74.66*(np.pi/180),mask=True,label_v = False)
         #t.determine_flux_block_pq(self,baseline,f=1.95,dec=-60*(np.pi/180),l=1*(np.pi/180),m=0*(np.pi/180),A2=0.2,resolution=250,image_s=3,s=2,sigma_t=0.05,type_w_t="G-1",window=0.2):
         #t.determine_flux_block_pq([1,2],f=1.445,dec=-70*(np.pi/180),l=1*(np.pi/180),m=0*(np.pi/180),A2=0.2,resolution=150,image_s=3,s=2,sigma_t=0.05,type_w_t="GTR-R",window=0.2)
         #t.determine_flux_block_pq([1,2],f=1.3,dec=-50*(np.pi/180),l=-1*(np.pi/180),m=1*(np.pi/180),A2=0.2,resolution=150,image_s=3,s=2,sigma_t=0.05,type_w_t="GTR-R",window=0.2)
-        t.determine_flux_A2_proto_pq([1,2],A_2_min = 0.001, A_2_max = 0.5,number = 10,resolution=150,image_s=3,s=2,sigma_t=0.05,type_w_t="GTR-R",window=0.2,l_0 = 1.0*(np.pi/180),m_0=0.0*(np.pi/180),dec=-74.66*(np.pi/180),f=1.445)
-        t.determine_flux_A2_proto_pq([1,2],A_2_min = 0.001, A_2_max = 0.5,number = 10,resolution=150,image_s=3,s=2,sigma_t=0.05,type_w_t="GTR-R",window=0.2,l_0 = 1.0*(np.pi/180),m_0=1.0*(np.pi/180),dec=-50*(np.pi/180),f=1.5)
+        t.determine_flux_A2_proto_pq([4,5],A_2_min = 0.001, A_2_max = 0.5,number = 10,resolution=150,image_s=3,s=2,sigma_t=0.05,type_w_t="G-1",window=0.2,l_0 = 1.0*(np.pi/180),m_0=0.0*(np.pi/180),dec=-74.66*(np.pi/180),f=1.445)
+        t.determine_flux_A2_proto_pq([4,5],A_2_min = 0.001, A_2_max = 0.5,number = 10,resolution=110,image_s=3,s=2,sigma_t=0.05,type_w_t="G-1",window=0.2,l_0 = 1.0*(np.pi/180),m_0=0.0*(np.pi/180),dec=-74.66*(np.pi/180),f=1.445)
+        #t.determine_flux_A2_proto_pq([4,5],A_2_min = 0.001, A_2_max = 0.5,number = 10,resolution=150,image_s=3,s=2,sigma_t=0.1,type_w_t="G-1",window=0.3,l_0 = 1.0*(np.pi/180),m_0=1.0*(np.pi/180),dec=-50*(np.pi/180),f=1.5)
         #image,l_v,m_v = t.sky_pq_2D([0,1],150,3,2,sigma = 0.05,type_w="GT-1",avg_v=False,plot=True,mask=True,label_v = False)
         #image,l_v,m_v = t.sky_pq_2D([0,2],150,3,2,sigma = 0.05,type_w="G-1",avg_v=False,plot=True,mask=True,label_v = False)
         #image,l_v,m_v = t.sky_pq_2D([0,2],150,3,2,sigma = 0.05,type_w="GT-1",avg_v=False,plot=True,mask=True,label_v = False)
