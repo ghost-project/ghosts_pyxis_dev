@@ -1869,17 +1869,50 @@ class T_ghost():
         proto_mask = np.logical_and(mask1,mask2)
         return mask[proto_mask],p_labels[proto_mask]
 
-    def create_error_sources(self,A2=0.2,p=0.7,number=10,fov=3):
+    def create_error_sources(self,baseline_sources,A2=0.2,p=0.7,number=10,fov=3,m_dist=0.5):
         error_sources = np.zeros((number,3),dtype=np.complex64)
      
-        flux_level = A2 * (5.0/100.0)
+        flux_level = A2 * (p/100.0)
         #flux_level = 0.5
+        #print "baseline_sources = ",len(baseline_sources)
+        #print "baseline_sources = ",baseline_sources
         alpha =  np.random.uniform(low=0, high=1, size = number)
         error_sources[:,0] = np.sqrt(alpha)*flux_level + np.sqrt(1-alpha)*flux_level*1j
-        error_sources[:,1] = np.random.uniform(low=-1*np.absolute(fov), high=np.absolute(fov), size = number)*(np.pi/180)
-        error_sources[:,2] = np.random.uniform(low=-1*np.absolute(fov), high=np.absolute(fov), size = number)*(np.pi/180) 
+        for k in xrange(number):
+            #print "k = ",k
+            big = False
+            while not big:
+                  #print "k2 = ",k
+                  l = np.random.uniform(low=-1*np.absolute(fov), high=np.absolute(fov), size = 1)*(np.pi/180)
+                  m = np.random.uniform(low=-1*np.absolute(fov), high=np.absolute(fov), size = 1)*(np.pi/180)
+
+                  d = np.sqrt((l-baseline_sources[:,1])**2 + (m-baseline_sources[:,2])**2)
+                  #print "d = ",d*(180/np.pi)
+                  d_min = np.amin(d)
+                  #print "d_min = ",d_min*(180/np.pi)
+                  #print "m_dist = ",m_dist
+                  if d_min > (m_dist*(np.pi/180.0)):
+                     big = True
+                     error_sources[k,1] = l
+                     error_sources[k,2] = m
+                     point_temp = np.zeros((1,3))
+                     #print "point_temp = ",point_temp
+                     point_temp[0,0] = 0.0
+                     point_temp[0,1] = l
+                     point_temp[0,2] = m 
+                     #print "baseline_sources = ",baseline_sources.shape
+                     baseline_sources = np.append(baseline_sources,point_temp,axis=0)
 
         return error_sources
+    
+    def plt_circle_range(self,l_c,m_c,radius):
+        plt.hold('on')
+        x = np.linspace(0,1,500)
+        y = np.linspace(0,1,500)
+
+        x_c = radius*np.cos(2*np.pi*x)+l_c
+        y_c = radius*np.sin(2*np.pi*y)+m_c
+        plt.plot(x_c,y_c,"k",lw=1)
 
     def create_vis(self,point_sources,u,v):
         uu,vv = np.meshgrid(u,v)
@@ -1891,7 +1924,7 @@ class T_ghost():
             vis = vis + point_sources[k,0]*np.exp(-2*np.pi*1j*(uu*l0 + vv*m0))
         return vis
     
-    def error_sky_pq_2D(self,baseline,l,m,u,v,vis,error_model,dec,sigma=0.05,plot=True,image_s=3.0):
+    def error_sky_pq_2D(self,baseline,l,m,u,v,vis,error_model,dec,window,sigma=0.05,plot=True,image_s=3.0):
         vis = vis + self.create_vis(error_model,u,v)
 
         delta_u = u[1]-u[0]
@@ -1929,6 +1962,7 @@ class T_ghost():
 
            for k in xrange(len(error_model)):
                plt.plot(error_model[k,1]*(180/np.pi),error_model[k,2]*(180/np.pi),"kx",mfc=None)
+               self.plt_circle_range(error_model[k,1]*(180/np.pi),error_model[k,2]*(180/np.pi),window)
 
            plt.xlim([-image_s,image_s])
            plt.ylim([-image_s,image_s])
@@ -1946,6 +1980,7 @@ class T_ghost():
 
            for k in xrange(len(error_model)):
                plt.plot(error_model[k,1]*(180/np.pi),error_model[k,2]*(180/np.pi),"kx",mfc=None)
+               self.plt_circle_range(error_model[k,1]*(180/np.pi),error_model[k,2]*(180/np.pi),window)
            plt.xlim([-image_s,image_s])
            plt.ylim([-image_s,image_s])
 
@@ -1963,32 +1998,67 @@ class T_ghost():
         
         A_2_v = np.linspace(A_2_min,A_2_max,number)
         mask,point_source_labels = self.create_mask(baseline,dec=dec)
+        mask_old = np.copy(mask)
+        mask_old[:,2] = mask_old[:,2]*(-1)
         #print "point_source_labels1 = ",point_source_labels
         mask,point_source_labels = self.extract_proto_mask(baseline,mask,point_source_labels)
         #print "point_source_labels2 = ",point_source_labels
         
         #four = np.array([(1,0,0),(1,self.l_0,-1*self.m_0),(1,-1*self.l_0,self.m_0),(1,2*self.l_0,-2*self.m_0)])
-
+        error_real = np.zeros((len(A_2_v),))
+        error_abs = np.zeros((len(A_2_v),))
         result_real = np.zeros((len(mask),len(A_2_v)))
         result_imag = np.zeros((len(mask),len(A_2_v)))
         result_abs = np.zeros((len(mask),len(A_2_v)))
-        image,l_v,m_v,vis_old,u,v = self.sky_pq_2D(baseline,resolution,image_s,s,sigma = sigma_t, type_w=type_w_t, avg_v=False, plot=True, mask=True, wave=wave_v,dec=dec)
+        #image,l_v,m_v,vis_old,u,v = self.sky_pq_2D(baseline,resolution,image_s,s,sigma = sigma_t, type_w=type_w_t, avg_v=False, plot=True, mask=True, wave=wave_v,dec=dec)
        
         for i in xrange(len(A_2_v)):
+            print "*****************************************"
             print "i = ",i
             print "A_2 = ",A_2_v[i] 
             self.A_2 = A_2_v[i]
-            error_sources =  self.create_error_sources(A2 = self.A_2,p=0.7,number=10,fov=image_s)
-            print "error_sources = ",error_sources
+            error_sources =  self.create_error_sources(baseline_sources = mask_old,A2 = self.A_2,p=0.7,number=20,fov=image_s)
+            #print "error_sources = ",(np.absolute(error_sources[:,0])/self.A_2)*100
             image,l_v,m_v,vis_old,u,v = self.sky_pq_2D(baseline,resolution,image_s,s,sigma = sigma_t, type_w=type_w_t, avg_v=False, plot=False, wave=wave_v,dec=dec)
-            image_error,l_e,m_e = self.error_sky_pq_2D(baseline,l_v,m_v,u,v,vis_old,error_sources,dec,sigma=0.05,plot=True)
-            print "vis_old = ",vis_old
-            print "u = ",u
-            print "v = ",v
+            image_error,l_e,m_e = self.error_sky_pq_2D(baseline,l_v,m_v,u,v,vis_old,error_sources,dec,window,sigma=0.05,plot=False)
+            #for k in xrange(len(error_sources)):
+            #    plt.plot(error_sources[k,1]*(180/np.pi),error_sources[k,2]*(180/np.pi),"kx")
+            #    plt.hold("on")
+
+            #for k in xrange(len(mask_old)):
+            #    plt.plot(mask_old[k,1]*(180/np.pi),mask_old[k,2]*(180/np.pi),"rx")
+            #    plt.hold("on")
+            #plt.show()
+
+            #for k in xrange(len(error_sources)):
+            #    print "k = ",k
+            #    print "d = ",np.amin(np.sqrt((error_sources[k,1]-mask_old[:,1])**2 + (error_sources[k,2]-mask_old[:,2])**2))*(180/np.pi)
+            #print "vis_old = ",vis_old
+            #print "u = ",u
+            #print "v = ",v
+            error_sources_t = np.copy(error_sources)
+            error_sources_t[:,2] = error_sources_t[:,2]*(-1)
             if i == 0:
                point_real,point_imag,point_abs = self.extract_flux(image,l_v,m_v,window,mask,False)
+               point_real_err,point_imag_err,point_abs_err = self.extract_flux(image_error,l_v,m_v,window,error_sources_t,False)
             else:
                point_real,point_imag,point_abs = self.extract_flux(image,l_v,m_v,window,mask,False)
+               point_real_err,point_imag_err,point_abs_err = self.extract_flux(image_error,l_v,m_v,window,error_sources_t,False)
+            #print "point_abs_err = ",(point_abs_err[:,0]/self.A_2)*100
+            print "error_sources = ",error_sources[:,0].real
+            print "point_real_err = ",point_real_err[:,0].real
+            #print "point_imag_err = ",point_imag_err
+            #print "*****************************************"
+            error_real_t = (np.absolute(point_real_err[:,0].real - error_sources[:,0].real)/self.A_2)*100
+            error_abs_t = (np.absolute(point_abs_err[:,0].real - np.absolute(error_sources[:,0]))/self.A_2)*100
+            print "error_real = ",error_real
+            print "mean = ",np.mean(error_real)
+            print "std = ",np.std(error_real)
+            print "median = ",np.median(error_real)
+            print "median_error_abs = ",np.median(error_abs)
+            print "*****************************************"
+            error_real[i] = np.median(error_real_t)
+            error_abs[i] = np.median(error_abs_t)
             result_real[:,i] = point_real[:,0]
             result_imag[:,i] = point_imag[:,0]
             #result_abs[:,i] = np.sqrt(point_real[:,0]**2+point_imag[:,0]**2)
@@ -2004,7 +2074,9 @@ class T_ghost():
         for i in xrange(len(labels_1)):
             if i == 7:
                m_str = "--"
-            plt.plot(A_2_v,(result_real[i,:])/(21*A_2_v)*100,m_str,label = labels_1[i])#lw = 2.0
+            print "len(result_real[i,:]) = ",len(result_real[i,:])
+            print "len(error_real) = ",len(error_real)
+            plt.errorbar(A_2_v,(result_real[i,:])/(21*A_2_v)*100,yerr = error_real,ls=m_str,label=labels_1[i])#lw = 2.0
             plt.hold('on')
         plt.legend(prop={'size':10})
         plt.xlabel("Flux [Jy]")
@@ -2265,8 +2337,8 @@ def runall ():
         #t.determine_flux_block_pq(self,baseline,f=1.95,dec=-60*(np.pi/180),l=1*(np.pi/180),m=0*(np.pi/180),A2=0.2,resolution=250,image_s=3,s=2,sigma_t=0.05,type_w_t="G-1",window=0.2):
         #t.determine_flux_block_pq([1,2],f=1.445,dec=-70*(np.pi/180),l=1*(np.pi/180),m=0*(np.pi/180),A2=0.2,resolution=150,image_s=3,s=2,sigma_t=0.05,type_w_t="GTR-R",window=0.2)
         #t.determine_flux_block_pq([1,2],f=1.3,dec=-50*(np.pi/180),l=-1*(np.pi/180),m=1*(np.pi/180),A2=0.2,resolution=150,image_s=3,s=2,sigma_t=0.05,type_w_t="GTR-R",window=0.2)
-        t.determine_flux_A2_proto_pq([4,5],A_2_min = 0.001, A_2_max = 0.5,number = 10,resolution=150,image_s=3,s=2,sigma_t=0.05,type_w_t="G-1",window=0.2,l_0 = 1.0*(np.pi/180),m_0=0.0*(np.pi/180),dec=-74.66*(np.pi/180),f=1.445)
-        t.determine_flux_A2_proto_pq([4,5],A_2_min = 0.001, A_2_max = 0.5,number = 10,resolution=110,image_s=3,s=2,sigma_t=0.05,type_w_t="G-1",window=0.2,l_0 = 1.0*(np.pi/180),m_0=0.0*(np.pi/180),dec=-74.66*(np.pi/180),f=1.445)
+        t.determine_flux_A2_proto_pq([4,5],A_2_min = 0.005, A_2_max = 0.5,number = 10,resolution=150,image_s=3,s=2,sigma_t=0.05,type_w_t="G-1",window=0.1,l_0 = 1.0*(np.pi/180),m_0=0.0*(np.pi/180),dec=-74.66*(np.pi/180),f=1.445)
+        t.determine_flux_A2_proto_pq([4,5],A_2_min = 0.005, A_2_max = 0.5,number = 10,resolution=110,image_s=3,s=2,sigma_t=0.05,type_w_t="G-1",window=0.1,l_0 = 1.0*(np.pi/180),m_0=0.0*(np.pi/180),dec=-74.66*(np.pi/180),f=1.445)
         #t.determine_flux_A2_proto_pq([4,5],A_2_min = 0.001, A_2_max = 0.5,number = 10,resolution=150,image_s=3,s=2,sigma_t=0.1,type_w_t="G-1",window=0.3,l_0 = 1.0*(np.pi/180),m_0=1.0*(np.pi/180),dec=-50*(np.pi/180),f=1.5)
         #image,l_v,m_v = t.sky_pq_2D([0,1],150,3,2,sigma = 0.05,type_w="GT-1",avg_v=False,plot=True,mask=True,label_v = False)
         #image,l_v,m_v = t.sky_pq_2D([0,2],150,3,2,sigma = 0.05,type_w="G-1",avg_v=False,plot=True,mask=True,label_v = False)
