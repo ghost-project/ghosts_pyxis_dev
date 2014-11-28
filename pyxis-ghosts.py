@@ -1308,8 +1308,10 @@ class T_ghost():
            m_cor = m_cor*(180/np.pi)
 
            fig = plt.figure() 
-           cs = plt.imshow(image.real,interpolation = "bicubic", cmap = "jet", extent = [l_cor[0],-1*l_cor[0],m_cor[0],-1*m_cor[0]])
-           fig.colorbar(cs)
+           #cs = plt.imshow((image.real/self.A_2)*100,interpolation = "bicubic", cmap = "jet", extent = [l_cor[0],-1*l_cor[0],m_cor[0],-1*m_cor[0]])
+           cs = plt.imshow((image.real/self.A_2)*100,interpolation = "bicubic", cmap = "jet", extent = [l_cor[0],-1*l_cor[0],m_cor[0],-1*m_cor[0]])
+           cb = fig.colorbar(cs)
+           cb.set_label(r"Flux [% of $A_2$]")
            self.plt_circle_grid(image_s)
 
            #print "amax = ",np.amax(image.real)
@@ -1328,8 +1330,10 @@ class T_ghost():
            plt.show()
         
            fig = plt.figure() 
+           #cs = plt.imshow(image.imag,interpolation = "bicubic", cmap = "jet", extent = [l_cor[0],-1*l_cor[0],m_cor[0],-1*m_cor[0]])
            cs = plt.imshow(image.imag,interpolation = "bicubic", cmap = "jet", extent = [l_cor[0],-1*l_cor[0],m_cor[0],-1*m_cor[0]])
-           fig.colorbar(cs)
+           cb=fig.colorbar(cs)
+           cb.set_label(r"Flux [% of $A_2$]")
            self.plt_circle_grid(image_s)
 
            plt.xlim([-image_s,image_s])
@@ -1379,8 +1383,9 @@ class T_ghost():
               #m_cor = m_cor*(180/np.pi)
 
               fig = plt.figure() 
-              cs = plt.imshow(image.real,interpolation = "bicubic", cmap = "jet", extent = [l_cor[0],-1*l_cor[0],m_cor[0],-1*m_cor[0]])
-              fig.colorbar(cs)
+              cs = plt.imshow((image.real/self.A_2)*100,interpolation = "bicubic", cmap = "jet", extent = [l_cor[0],-1*l_cor[0],m_cor[0],-1*m_cor[0]])
+              cb = fig.colorbar(cs)
+              cb.set_label(r"Flux [% of $A_2$]")
               self.plt_circle_grid(image_s)
 
               #print "amax = ",np.amax(image.real)
@@ -1388,6 +1393,9 @@ class T_ghost():
 
               plt.xlim([-image_s,image_s])
               plt.ylim([-image_s,image_s])
+
+              #plt.hold("on")
+              #self.plot_ghost_mask_all_paper(dec=dec,im_s=image_s)
 
               if mask:
                  self.create_mask_all(plot_v=True,dec=dec)
@@ -1414,7 +1422,7 @@ class T_ghost():
               plt.ylabel("$m$ [degrees]")
               plt.show()
 
-        return image,l_old,m_old
+        return image,l_old,m_old,vis_old,u,v
 
     # sigma --- degrees, resolution --- arcsecond, image_s --- degrees
     def sky_pq_2D(self,baseline,resolution,image_s,s,sigma = None,type_w="G-1",avg_v=False,plot=False,mask=False,wave=None,dec=None,label_v=False,save_fig=False,approx=False,difference=False,subtract=False,window=0.2):
@@ -1496,9 +1504,15 @@ class T_ghost():
            m_cor = m_cor*(180/np.pi)
 
            fig = plt.figure() 
-           cs = plt.imshow(image.real,interpolation = "bicubic", cmap = "jet", extent = [l_cor[0],-1*l_cor[0],m_cor[0],-1*m_cor[0]])
+           #cs = plt.imshow((image.real/self.A_2)*100,interpolation = "bicubic", cmap = "jet", extent = [l_cor[0],-1*l_cor[0],m_cor[0],-1*m_cor[0]])
+           cs = plt.imshow((image.real/self.A_2)*100,interpolation = "bicubic", cmap = "cubehelix", extent = [l_cor[0],-1*l_cor[0],m_cor[0],-1*m_cor[0]])
+           print "max real =",np.amax((image.real/self.A_2)*100)
+           print "min real =",np.amin((image.real/self.A_2)*100)
+           print "max imag =",np.amax((image.imag/self.A_2)*100)
+           print "min imag =",np.amin((image.imag/self.A_2)*100)
            #cs = plt.imshow(np.absolute(image),interpolation = "bicubic", cmap = "jet", extent = [l_cor[0],-1*l_cor[0],m_cor[0],-1*m_cor[0]])
-           fig.colorbar(cs)
+           cb = fig.colorbar(cs)
+           cb.set_label(r"Flux [% of $A_2$]")
            self.plt_circle_grid(image_s)
            if label_v:
               self.plot_source_labels_pq(baseline,im=image_s,plot_x = False)
@@ -1526,8 +1540,11 @@ class T_ghost():
               plt.show()
         
            fig = plt.figure() 
-           cs = plt.imshow(image.imag,interpolation = "bicubic", cmap = "jet", extent = [l_cor[0],-1*l_cor[0],m_cor[0],-1*m_cor[0]])
-           fig.colorbar(cs)
+           #cs = plt.imshow((image.imag/self.A_2)*100,interpolation = "bicubic", cmap = "jet", extent = [l_cor[0],-1*l_cor[0],m_cor[0],-1*m_cor[0]])
+           cs = plt.imshow((image.imag/self.A_2)*100,interpolation = "bicubic", cmap = "cubehelix", extent = [l_cor[0],-1*l_cor[0],m_cor[0],-1*m_cor[0]],vmin=-12.65,vmax=12.65)
+           cb = fig.colorbar(cs)
+           cb.set_label(r"Flux [% of $A_2$]")
+                      
            self.plt_circle_grid(image_s)
            if label_v:
               self.plot_source_labels_pq(baseline,im=image_s,plot_x = False)
@@ -1595,7 +1612,7 @@ class T_ghost():
               #m_cor = m_cor*(180/np.pi)
 
               fig = plt.figure() 
-              cs = plt.imshow(image.real,interpolation = "bicubic", cmap = "jet", extent = [l_cor[0],-1*l_cor[0],m_cor[0],-1*m_cor[0]])
+              cs = plt.imshow(image.real,interpolation = "bicubic", cmap = "cubehelix", extent = [l_cor[0],-1*l_cor[0],m_cor[0],-1*m_cor[0]])
               fig.colorbar(cs)
               self.plt_circle_grid(image_s)
 
@@ -1615,7 +1632,7 @@ class T_ghost():
               plt.show()
         
               fig = plt.figure() 
-              cs = plt.imshow(image.imag,interpolation = "bicubic", cmap = "jet", extent = [l_cor[0],-1*l_cor[0],m_cor[0],-1*m_cor[0]])
+              cs = plt.imshow(image.imag,interpolation = "bicubic", cmap = "cubehelix", extent = [l_cor[0],-1*l_cor[0],m_cor[0],-1*m_cor[0]])
               fig.colorbar(cs)
               self.plt_circle_grid(image_s)
 
@@ -1659,7 +1676,7 @@ class T_ghost():
     def create_mask_all(self,plot_v = False,dec=None):
         if dec == None:
            dec = self.dec
-        sin_delta = np.absolute(np.sin(dec))
+        sin_delta = np.sin(dec)
         
         point_sources = np.array([(1,0,0)])
         point_sources_labels = np.array([(0,0,0,0)])
@@ -1930,13 +1947,21 @@ class T_ghost():
         plt.show()
          
 
-    def determine_flux_l_pq(self,baseline,l_min = 1,l_max = 3,number = 10,resolution=250,image_s=3,s=2,sigma_t=0.05,type_w_t="G-1",window=0.2):
+    def determine_flux_l_pq(self,baseline,l_min = 1,l_max = 3,number = 10,resolution=250,image_s=3,s=2,sigma_t=0.05,type_w_t="G-1",window=0.2,error_v=False,exper=100,p=13):
         l_min = l_min*(np.pi/180.0)
         l_max = l_max*(np.pi/180.0)
         l_v_k = np.linspace(l_min,l_max,number)
         #wave_v = 3e8/(1.0*f_v)
         l_old = self.l_0
         mask,point_source_labels = self.create_mask(baseline)
+        result_error = []
+        result_error2 = []
+ 
+        if error_v:
+           mask_new = np.copy(mask)
+           mask_new[:,2] = mask_new[:,2]*-1
+           result_error = np.zeros((exper,number))
+           result_error2 = np.zeros((exper,number))
         mask,point_source_labels = self.extract_proto_mask(baseline,mask,point_source_labels)
 
         result =  np.zeros((len(mask),len(l_v_k)))
@@ -1947,30 +1972,59 @@ class T_ghost():
             print "l_v = ",l_v_k
             self.l_0 = l_v_k[k]
             mask,point_source_labels = self.create_mask(baseline)
+            if error_v:
+               mask_new = np.copy(mask)
+               mask_new[:,2] = mask_new[:,2]*-1
             mask,point_source_labels = self.extract_proto_mask(baseline,mask,point_source_labels)
             image,l_v,m_v,vis,u_c,v_c,i = self.sky_pq_2D(baseline,resolution,image_s,s,sigma = sigma_t, type_w=type_w_t, avg_v=False, plot=False)
             point_real,point_imag,point_abs = self.extract_flux(image,l_v,m_v,window,mask,False)
             result[:,k] = point_abs[:,0]
             result2[:,k] = point_real[:,0]
-        print "v.PICKLENAME = ",II(v.PICKLENAME)
-        v.PICKLENAME = "l_results_"+type_w_t+"_{0}_{1}".format(*baseline) #freq list, results, mask, point source labels
+            if error_v:
+               for j in xrange(exper):
+                   #print "j = ",j
+                   error_sources = self.create_error_sources(baseline_sources = mask_new,A2=self.A_2,p=p,number=1,fov=image_s)
+                   error_sources_c = np.copy(error_sources)
+                   error_sources_c[:,2] = error_sources[:,2]*-1
+                   image_error,l_e,m_e = self.error_sky_pq_2D(baseline,l_v,m_v,u_c,v_c,vis,error_sources,window=window,sigma=sigma_t,plot=False)
+                   point_real_e,point_imag_e,point_abs_e = self.extract_flux(image_error,l_e,m_e,window,error_sources_c,False)
+                   #print "error_sources_c = ",error_sources_c[:,0]
+                   #print "point_real_e = ",point_real_e.real[:,0]
+                   #print "point_abs_e = ",point_abs_e.real[:,0]
+                   result_error2[j,k] = np.absolute(point_real_e[0,0].real - error_sources_c[0,0].real)
+                   result_error[j,k] = np.absolute(point_abs_e[0,0].real - np.absolute(error_sources_c[0,0]))
+        #print "v.PICKLENAME = ",II(v.PICKLENAME)
+        if error_v:
+           v.PICKLENAME = "l_results_"+type_w_t+"_error_"+str(int(p))+"_{0}_{1}".format(*baseline) #freq list, results, mask, point source labels
+        else:
+           v.PICKLENAME = "l_results_"+type_w_t+"_{0}_{1}".format(*baseline) #freq list, results, mask, point source labels
         file_name = II(v.PICKLEFILE)
         f = open(file_name, 'wb')
         pickle.dump(l_v_k*(180/np.pi),f)
         pickle.dump(result,f)
         pickle.dump(result2,f)
+        pickle.dump(result_error,f)
+        pickle.dump(result_error2,f)
         pickle.dump(mask,f)
         pickle.dump(point_source_labels,f)
         f.close()
         self.l_0 = l_old
         return l_v_k,result,result2,mask,point_source_labels
     
-    def determine_flux_dec_pq(self,baseline,dec_min = -80,dec_max = -30,number = 10,resolution=250,image_s=3,s=2,sigma_t=0.05,type_w_t="G-1",window=0.2):
+    def determine_flux_dec_pq(self,baseline,dec_min = -80,dec_max = -30,number = 10,resolution=250,image_s=3,s=2,sigma_t=0.05,type_w_t="G-1",window=0.2,error_v=False,exper=100,p=13):
         dec_min = dec_min*(np.pi/180.0)
         dec_max = dec_max*(np.pi/180.0)
         dec_v_k = np.linspace(dec_min,dec_max,number)
         #wave_v = 3e8/(1.0*f_v)
-        mask,point_source_labels = self.create_mask(baseline)
+        mask,point_source_labels = self.create_mask(baseline,dec=dec_v_k[0])
+        result_error = []
+        result_error2 = []
+ 
+        if error_v:
+           mask_new = np.copy(mask)
+           mask_new[:,2] = mask_new[:,2]*-1
+           result_error = np.zeros((exper,number))
+           result_error2 = np.zeros((exper,number))
         mask,point_source_labels = self.extract_proto_mask(baseline,mask,point_source_labels)
 
         result =  np.zeros((len(mask),len(dec_v_k)))
@@ -1979,31 +2033,60 @@ class T_ghost():
         for k in xrange(len(dec_v_k)):
             print "k = ",k
             print "dec_v = ",dec_v_k
-            mask,point_source_labels = self.create_mask(baseline)
+            mask,point_source_labels = self.create_mask(baseline,dec=dec_v_k[k])
+            if error_v:
+               mask_new = np.copy(mask)
+               mask_new[:,2] = mask_new[:,2]*-1
             mask,point_source_labels = self.extract_proto_mask(baseline,mask,point_source_labels)
             image,l_v,m_v,vis,u_c,v_c,i = self.sky_pq_2D(baseline,resolution,image_s,s,sigma = sigma_t, type_w=type_w_t, avg_v=False, plot=False,dec=dec_v_k[k])
             point_real,point_imag,point_abs = self.extract_flux(image,l_v,m_v,window,mask,False)
             result[:,k] = point_abs[:,0]
             result2[:,k] = point_real[:,0]
-        print "v.PICKLENAME = ",II(v.PICKLENAME)
-        v.PICKLENAME = "declination_"+type_w_t+"_{0}_{1}".format(*baseline) #freq list, results, mask, point source labels
+            if error_v:
+               for j in xrange(exper):
+                   #print "j = ",j
+                   error_sources = self.create_error_sources(baseline_sources = mask_new,A2=self.A_2,p=p,number=1,fov=image_s)
+                   error_sources_c = np.copy(error_sources)
+                   error_sources_c[:,2] = error_sources[:,2]*-1
+                   image_error,l_e,m_e = self.error_sky_pq_2D(baseline,l_v,m_v,u_c,v_c,vis,error_sources,window=window,sigma=sigma_t,plot=False,dec=dec_v_k[k])
+                   point_real_e,point_imag_e,point_abs_e = self.extract_flux(image_error,l_e,m_e,window,error_sources_c,False)
+                   #print "error_sources_c = ",error_sources_c[:,0]
+                   #print "point_real_e = ",point_real_e.real[:,0]
+                   #print "point_abs_e = ",point_abs_e.real[:,0]
+                   result_error2[j,k] = np.absolute(point_real_e[0,0].real - error_sources_c[0,0].real)
+                   result_error[j,k] = np.absolute(point_abs_e[0,0].real - np.absolute(error_sources_c[0,0]))
+        #print "v.PICKLENAME = ",II(v.PICKLENAME)
+        if error_v:
+           v.PICKLENAME = "declination_"+type_w_t+"_error_"+str(int(p))+"_{0}_{1}".format(*baseline) #freq list, results, mask, point source labels
+        else:
+           v.PICKLENAME = "declination_"+type_w_t+"_{0}_{1}".format(*baseline) #freq list, results, mask, point source labels
         file_name = II(v.PICKLEFILE)
         f = open(file_name, 'wb')
         pickle.dump(dec_v_k*(180/np.pi),f)
         pickle.dump(result,f)
         pickle.dump(result2,f)
+        pickle.dump(result_error,f)
+        pickle.dump(result_error2,f)
         pickle.dump(mask,f)
         pickle.dump(point_source_labels,f)
         f.close()
         return dec_v_k,result,result2,mask,point_source_labels
    
-    def determine_flux_m_pq(self,baseline,m_min = 1,m_max = 3,number = 10,resolution=250,image_s=3,s=2,sigma_t=0.05,type_w_t="G-1",window=0.2):
+    def determine_flux_m_pq(self,baseline,m_min = 1,m_max = 3,number = 10,resolution=250,image_s=3,s=2,sigma_t=0.05,type_w_t="G-1",window=0.2,error_v=False,exper=100,p=13):
         m_min = m_min*(np.pi/180.0)
         m_max = m_max*(np.pi/180.0)
         m_v_k = np.linspace(m_min,m_max,number)
         #wave_v = 3e8/(1.0*f_v)
         m_old = self.m_0
         mask,point_source_labels = self.create_mask(baseline)
+        result_error = []
+        result_error2 = []
+ 
+        if error_v:
+           mask_new = np.copy(mask)
+           mask_new[:,2] = mask_new[:,2]*-1
+           result_error = np.zeros((exper,number))
+           result_error2 = np.zeros((exper,number))
         mask,point_source_labels = self.extract_proto_mask(baseline,mask,point_source_labels)
 
         result =  np.zeros((len(mask),len(m_v_k)))
@@ -2014,18 +2097,39 @@ class T_ghost():
             print "m_v = ",m_v_k
             self.m_0 = m_v_k[k]
             mask,point_source_labels = self.create_mask(baseline)
+            if error_v:
+               mask_new = np.copy(mask)
+               mask_new[:,2] = mask_new[:,2]*-1
             mask,point_source_labels = self.extract_proto_mask(baseline,mask,point_source_labels)
             image,l_v,m_v,vis,u_c,v_c,i = self.sky_pq_2D(baseline,resolution,image_s,s,sigma = sigma_t, type_w=type_w_t, avg_v=False, plot=False)
             point_real,point_imag,point_abs = self.extract_flux(image,l_v,m_v,window,mask,False)
             result[:,k] = point_abs[:,0]
             result2[:,k] = point_real[:,0]
-        print "v.PICKLENAME = ",II(v.PICKLENAME)
-        v.PICKLENAME = "m_results_"+type_w_t+"_{0}_{1}".format(*baseline) #freq list, results, mask, point source labels
+            if error_v:
+               for j in xrange(exper):
+                   #print "j = ",j
+                   error_sources = self.create_error_sources(baseline_sources = mask_new,A2=self.A_2,p=p,number=1,fov=image_s)
+                   error_sources_c = np.copy(error_sources)
+                   error_sources_c[:,2] = error_sources[:,2]*-1
+                   image_error,l_e,m_e = self.error_sky_pq_2D(baseline,l_v,m_v,u_c,v_c,vis,error_sources,window=window,sigma=sigma_t,plot=False)
+                   point_real_e,point_imag_e,point_abs_e = self.extract_flux(image_error,l_e,m_e,window,error_sources_c,False)
+                   #print "error_sources_c = ",error_sources_c[:,0]
+                   #print "point_real_e = ",point_real_e.real[:,0]
+                   #print "point_abs_e = ",point_abs_e.real[:,0]
+                   result_error2[j,k] = np.absolute(point_real_e[0,0].real - error_sources_c[0,0].real)
+                   result_error[j,k] = np.absolute(point_abs_e[0,0].real - np.absolute(error_sources_c[0,0]))
+        #print "v.PICKLENAME = ",II(v.PICKLENAME)
+        if error_v:
+           v.PICKLENAME = "m_results_"+type_w_t+"_error_"+str(int(p))+"_{0}_{1}".format(*baseline) #freq list, results, mask, point source labels
+        else:
+           v.PICKLENAME = "m_results_"+type_w_t+"_{0}_{1}".format(*baseline) #freq list, results, mask, point source labels
         file_name = II(v.PICKLEFILE)
         f = open(file_name, 'wb')
         pickle.dump(m_v_k*(180/np.pi),f)
         pickle.dump(result,f)
         pickle.dump(result2,f)
+        pickle.dump(result_error,f)
+        pickle.dump(result_error2,f)
         pickle.dump(mask,f)
         pickle.dump(point_source_labels,f)
         f.close()
@@ -2164,13 +2268,22 @@ class T_ghost():
               v.PICKLENAME = "freq_results_"+type_w+"_{0}_{1}".format(*baseline) #freq list, results, mask, point source labels
            x_label = r"Frequency [GHz]"
         elif parameter == "l":
-           v.PICKLENAME = "l_results_"+type_w+"_{0}_{1}".format(*baseline) #freq list, results, mask, point source labels
+           if error_v:
+              v.PICKLENAME = "l_results_"+type_w+"_error_"+str(int(p))+"_{0}_{1}".format(*baseline) #freq list, results, mask, point source labels
+           else:
+              v.PICKLENAME = "l_results_"+type_w+"_{0}_{1}".format(*baseline) #freq list, results, mask, point source labels
            x_label = r"$l$ [$^{\circ}$]"
         elif parameter == "m":    
-           v.PICKLENAME = "m_results_"+type_w+"_{0}_{1}".format(*baseline) #freq list, results, mask, point source labels
+           if error_v:
+              v.PICKLENAME = "m_results_"+type_w+"_error_"+str(int(p))+"_{0}_{1}".format(*baseline) #freq list, results, mask, point source labels
+           else:
+              v.PICKLENAME = "m_results_"+type_w+"_{0}_{1}".format(*baseline) #freq list, results, mask, point source labels
            x_label = r"$m$ [$^{\circ}$]"
         elif parameter == "dec":
-           v.PICKLENAME = "declination_"+type_w+"_{0}_{1}".format(*baseline) #freq list, results, mask, point source labels
+           if error_v:
+              v.PICKLENAME = "declination_"+type_w+"_error_"+str(int(p))+"_{0}_{1}".format(*baseline) #freq list, results, mask, point source labels
+           else:
+              v.PICKLENAME = "declination_"+type_w+"_{0}_{1}".format(*baseline) #freq list, results, mask, point source labels
            x_label = r"$\delta_0$ [$^{\circ}$]"
         elif parameter == "A2":
            if error_v:
@@ -2407,7 +2520,7 @@ class T_ghost():
         proto_mask = np.logical_and(mask1,mask2)
         return mask[proto_mask],p_labels[proto_mask]
 
-    def create_error_sources(self,baseline_sources,A2=0.2,p=0.7,number=10,fov=3,m_dist=0.25):
+    def create_error_sources(self,baseline_sources,A2=0.2,p=0.7,number=10,fov=3,m_dist=0.25,flux=None):
         error_sources = np.zeros((number,3),dtype=np.complex64)
      
         flux_level = A2 * (p/100.0)
@@ -2415,7 +2528,10 @@ class T_ghost():
         #print "baseline_sources = ",len(baseline_sources)
         #print "baseline_sources = ",baseline_sources
         alpha =  np.random.uniform(low=0, high=1, size = number)
-        error_sources[:,0] = np.sqrt(alpha)*flux_level + np.sqrt(1-alpha)*flux_level*1j
+        if flux == None:
+           error_sources[:,0] = np.sqrt(alpha)*flux_level + np.sqrt(1-alpha)*flux_level*1j
+        else:
+           error_sources[:,0] = flux
         for k in xrange(number):
             #print "k = ",k
             big = False
@@ -2502,7 +2618,8 @@ class T_ghost():
            #cs = plt.imshow(np.absolute(image),interpolation = "bicubic", cmap = "jet", extent = [l_cor[0],-1*l_cor[0],m_cor[0],-1*m_cor[0]])
            fig.colorbar(cs)
            self.plt_circle_grid(image_s)
-           p = self.create_mask(baseline,plot_v = True,dec=dec)
+           if baseline <> None:
+              p = self.create_mask(baseline,plot_v = True,dec=dec)
 
            for k in xrange(len(error_model)):
                plt.plot(error_model[k,1]*(180/np.pi),error_model[k,2]*(180/np.pi),"kx",mfc=None)
@@ -2520,7 +2637,8 @@ class T_ghost():
            cs = plt.imshow(image.imag,interpolation = "bicubic", cmap = "jet", extent = [l_cor[0],-1*l_cor[0],m_cor[0],-1*m_cor[0]])
            fig.colorbar(cs)
            self.plt_circle_grid(image_s)
-           p = self.create_mask(baseline,plot_v = True,dec=dec)
+           if baseline <> None:
+              p = self.create_mask(baseline,plot_v = True,dec=dec)
 
            for k in xrange(len(error_model)):
                plt.plot(error_model[k,1]*(180/np.pi),error_model[k,2]*(180/np.pi),"kx",mfc=None)
@@ -2542,7 +2660,7 @@ class T_ghost():
         #gkde=stats.gaussian_kde(flat_image)
         #gkde2=stats.gaussian_kde(flat_image2)
         #gkde2.set_bandwidth(bw_method='silverman')
-        plt.hist(flat_image2, bins=200, range = (-0.01,0.01), normed=1,histtype="bar")
+        plt.hist(flat_image2, bins=200, range = (-0.005,0.005), normed=1,histtype="bar")
         #plt.show()
         #ind = np.linspace(-0.005,0.005,3000)
         #kdepdf = gkde.evaluate(ind)
@@ -2687,27 +2805,60 @@ class T_ghost():
         #plt.xlim([f_v[0]/1e9,f_v[-1]/1e9])
         plt.show()        
         return result_real,result_abs,A_2_v
+            
+    def do_monte_carlo(self,l_v,m_v,vis,u_c,v_c,image_s,exper,mask_new,window,sigma_t,flux=1+0j):
+        error = np.zeros((exper,))
+        for j in xrange(exper):
+            print "j = ",j
+            error_sources = self.create_error_sources(baseline_sources = mask_new,number=1,fov=image_s,flux=flux)
+            error_sources_c = np.copy(error_sources)
+            error_sources_c[:,2] = error_sources[:,2]*(-1)
+            image_error,l_e,m_e = self.error_sky_pq_2D(None,l_v,m_v,u_c,v_c,vis,error_sources,window=window,sigma=sigma_t,plot=False)
+            point_real_e,point_imag_e,point_abs_e = self.extract_flux(image_error,l_e,m_e,window,error_sources_c,False)
+            #print "error_sources_c = ",error_sources_c[:,0]
+            #print "point_real_e = ",point_real_e.real[:,0]
+            #print "point_abs_e = ",point_abs_e.real[:,0]
+            error[j] = np.absolute(point_real_e[0,0].real - error_sources_c[0,0].real)
+        return error  
+
     
-    def determine_flux_A2(self,A_2_min = 0.001, A_2_max = 0.5,number = 5,resolution=250,image_s=3,s=2,sigma_t=0.05,type_w_t="GT-1",window=0.2):
+    def determine_flux_A2(self,A_2_min = 0.001, A_2_max = 0.5,number = 5,resolution=250,image_s=3,s=2,sigma_t=0.05,type_w_t="GT-1",window=0.2,
+error_v=False,exper=10):
         A_2_v = np.linspace(A_2_min,A_2_max,number)
         four = np.array([(1,0,0),(1,self.l_0,-1*self.m_0),(1,-1*self.l_0,self.m_0),(1,2*self.l_0,-2*self.m_0)])
+        
+        result_error = [] #(number of sources, experiments, number of flux values)
+
+        if error_v:
+           mask_new = np.copy(four)
+           mask_new[:,2] = mask_new[:,2]*-1
+           result_error = np.zeros((len(four),exper,number))
 
         result = np.zeros((len(four),len(A_2_v)))
 
         for i in xrange(len(A_2_v)):
             print "i = ",i
-            print "A_2 = ",A_2_v[i] 
+            #print "A_2 = ",A_2_v[i] 
             self.A_2 = A_2_v[i]
-            image,l_v,m_v = self.sky_2D(resolution,image_s,s,sigma = sigma_t, type_w=type_w_t, avg_v=False, plot=False)
+            image,l_v,m_v,vis,u_c,v_c = self.sky_2D(resolution,image_s,s,sigma = sigma_t, type_w=type_w_t, avg_v=False, plot=False)
             point_real,point_imag,point_abs = self.extract_flux(image,l_v,m_v,window,four,False)
             result[:,i] = point_real[:,0]
+
+            if error_v:
+               for k in xrange(len(four)):
+                   print "k = ",k
+                   #def do_monte_carlo(self,l_v,m_v,vis,u_c,v_c,image_s,exper,mask_new,window,sigma_t,flux=1+0j):
+                   result_error[k,:,i] = self.do_monte_carlo(l_v,m_v,vis,u_c,v_c,image_s,exper,mask_new,window,sigma_t,flux=point_real[k,0])           
+            print "result = ",(result[:,i]/self.A_2)*100
+            print "result_error = ",result_error 
         v.PICKLENAME = "flux_A2" #freq list, results, mask, point source labels
         file_name = II(v.PICKLEFILE)
         f = open(file_name, 'wb')
         pickle.dump(A_2_v,f)
         pickle.dump(result,f)
-        pickle.dump(mask,f)
-        pickle.dump(point_source_labels,f)
+        pickle.dump(result_error,f)
+        pickle.dump(four,f)
+        #pickle.dump(point_source_labels,f)
         f.close()
         return result,A_2_v
     
@@ -2987,14 +3138,14 @@ def runall ():
         #*************************************
         
         point_sources = np.array([(1,0,0),(0.2,(1*np.pi)/180,(0*np.pi)/180)])
-        #point_sources = np.array([(1j,1*(np.pi/180),1*(np.pi/180)),(0,0,0)])
+        #point_sources = np.array([(1,0*(np.pi/180),0*(np.pi/180)),(0,0,0)])
         #s = Sky_model(ms_object,point_sources)
         #point_sources = np.array([(0.2,0,0),(-0.01,(-1*np.pi/180),(0*np.pi/180)),(0.012,(1*np.pi/180),(-1*np.pi/180)),(-0.1,(-1*np.pi/180),(-1*np.pi/180))])
         #s.meqskymodel(point_sources,antenna=[4,5])
 
         #s.visibility("CORRECTED_DATA")
         
-        #p_wrapper.image_settings(filter=None)
+        #p_wrapper.image_settings(filter=None,npix=1440)
         #options = p_wrapper.image_advanced_settings(antenna=[4,5])
         #imager.make_image(column="CORRECTED_DATA",dirty=options)
         #p_wrapper.flip_fits()
@@ -3020,16 +3171,21 @@ def runall ():
         t = T_ghost(point_sources,"all","KAT7_1445_1x16_12h.ms")
         #def sky_2D(self,resolution,image_s,s,sigma = None,type_w="G-1",avg_v=False,plot=False,mask=False,wave=None,dec=None,approx=False,window=0.2,subtract=False):
         #t.determine_ghosts_theta(resolution=150,image_s=3,s=2,sigma_t=0.025,type_w_t="GT-1",window=0.1)
-        #image,l_v,m_v = t.sky_2D(150,3,2,sigma=0.05,type_w="G-1",avg_v=True,plot=True,dec=-74.66*(np.pi/180),mask=False,subtract=False,window=0.2)
+        image,l_v,m_v,vis_old,u,v = t.sky_2D(150,4,2,sigma=0.06,type_w="GT-1",avg_v=True,plot=True,dec=-74.66*(np.pi/180),mask=False,subtract=True,window=0.2)
+        #image,l_v,m_v,vis_old,u,v,i_old = t.sky_pq_2D([4,5],100,4,2,sigma = 0.04,type_w="GT-1",avg_v=False,plot=True,dec=-74.66*(np.pi/180),mask=False,label_v = False)
         #t.determine_noise_statistics(image)
-        #image,l_v,m_v,vis_old,u,v,i_old = t.sky_pq_2D([1,4],130,3,2,sigma = 0.05,type_w="GT-1",avg_v=False,plot=True,dec=-74.66*(np.pi/180),mask=True,label_v = False)
+        #image,l_v,m_v,vis_old,u,v,i_old = t.sky_pq_2D([4,5],150,4,2,sigma = 0.06,type_w="GT-1",avg_v=False,plot=True,dec=-74.66*(np.pi/180),mask=False,label_v = False)
+        #image,l_v,m_v,vis_old,u,v,i_old = t.sky_pq_2D([2,3],150,8,2,sigma = 0.12,type_w="GT-1",avg_v=False,plot=True,dec=-74.66*(np.pi/180),mask=False,label_v = False)
+        #image,l_v,m_v,vis_old,u,v,i_old = t.sky_pq_2D([1,5],100,2,2,sigma = 0.025,type_w="GT-1",avg_v=False,plot=True,dec=-74.66*(np.pi/180),mask=False,label_v = False)
         #t.determine_flux_block_pq(self,baseline,f=1.95,dec=-60*(np.pi/180),l=1*(np.pi/180),m=0*(np.pi/180),A2=0.2,resolution=250,image_s=3,s=2,sigma_t=0.05,type_w_t="G-1",window=0.2):
         #t.determine_flux_block_pq([1,2],f=1.445,dec=-70*(np.pi/180),l=1*(np.pi/180),m=0*(np.pi/180),A2=0.2,resolution=150,image_s=3,s=2,sigma_t=0.05,type_w_t="GTR-R",window=0.2)
         #t.determine_flux_block_pq([1,2],f=1.3,dec=-50*(np.pi/180),l=-1*(np.pi/180),m=1*(np.pi/180),A2=0.2,resolution=150,image_s=3,s=2,sigma_t=0.05,type_w_t="GTR-R",window=0.2)
         #t.determine_flux_A2_proto_pq([4,5],A_2_min = 0.005, A_2_max = 0.5,number = 10,resolution=150,image_s=3,s=2,sigma_t=0.05,type_w_t="G-1",window=0.1,l_0 = 1.0*(np.pi/180),m_0=0.0*(np.pi/180),dec=-74.66*(np.pi/180),f=1.445)
         #t.determine_flux_A2_proto_pq([4,5],A_2_min = 0.005, A_2_max = 0.5,number = 10,resolution=110,image_s=3,s=2,sigma_t=0.05,type_w_t="G-1",window=0.1,l_0 = 1.0*(np.pi/180),m_0=1.0*(np.pi/180),dec=-50*(np.pi/180),f=1.2)
-        #t.plot_ghost_mask_paper([4,5],dec=-74.66*(np.pi/180),im_s=3.5)
-        #t.plot_ghost_mask_all_paper(dec=-74.66*(np.pi/180),im_s=3.5)
+        #t.plot_ghost_mask_paper([4,5],dec=-74.66*(np.pi/180),im_s=4)
+        #t.plot_ghost_mask_paper([2,3],dec=-74.66*(np.pi/180),im_s=8)
+        #t.plot_ghost_mask_paper([1,5],dec=-74.66*(np.pi/180),im_s=2)
+        #t.plot_ghost_mask_all_paper(dec=-74.66*(np.pi/180),im_s=4)
         #t.sky_2D(150,3,2,0.05,type_w="GT-1",avg_v=True,plot=True,mask=False,wave=None,dec=None,approx=False,window=0.2,subtract=True)
         #t.determine_flux_A2_proto_pq([4,5],A_2_min = 0.001, A_2_max = 0.5,number = 10,resolution=150,image_s=3,s=2,sigma_t=0.1,type_w_t="G-1",window=0.3,l_0 = 1.0*(np.pi/180),m_0=1.0*(np.pi/180),dec=-50*(np.pi/180),f=1.5)
         #image,l_v,m_v = t.sky_pq_2D([0,1],150,3,2,sigma = 0.05,type_w="GT-1",avg_v=False,plot=True,mask=True,label_v = False)
@@ -3046,9 +3202,10 @@ def runall ():
         #plt.show()
         #image,l_v,m_v = t.sky_pq_2D([1,5],250,5,2,sigma = 0.05,type_w="G-1",avg_v=False,plot=True,mask=True,label_v = True)
         #s_index = t.get_sorted_index_pq([2,3],resolution=150,image_s=4,s=2,sigma_t=0.05,type_w_t="GTR-R",window=0.3)
-        freq,flux,flux2,mask,p_labels = t.determine_flux_wave_pq([4,5],f_min = 1.445,f_max = 1.9,number = 20,resolution=150,image_s=3,s=2,sigma_t=0.05,type_w_t="G-1",window=0.2,error_v=True,exper=1000,p=13)
+        #freq,flux,flux2,mask,p_labels = t.determine_flux_l_pq([4,5],l_min = 1,l_max = 2,number = 5,resolution=150,image_s=5,s=2,sigma_t=0.05,type_w_t="G-1",window=0.2,error_v=True,exper=100,p=13)
+        #t.determine_flux_A2(A_2_min = 0.1, A_2_max = 0.5,number = 2,resolution=250,image_s=3,s=2,sigma_t=0.05,type_w_t="GT-1",window=0.2,error_v=True,exper=10)
         #t.dec_graph([4,5],dec_min=-90*(np.pi/180),dec_max=-50*(np.pi/180),npoints=100)
-        t.plot_pq([4,5],parameter="freq",error_v=True,flux_type=1,p=13)
+        #t.plot_pq([4,5],parameter="l",error_v=True,flux_type=1,p=13)
         #def plot_pq(self,baseline,type_w="G-1",parameter="freq",flux_type=1):
         #freq,flux,mask,p_labels = t.determine_flux_wave_pq([2,3],f_min = 1.2,f_max = 1.95,number = 10,resolution=150,image_s=4,s=2,sigma_t=0.05,type_w_t="GTR-R",window=0.2)
         #l_x,flux,mask,p_labels = t.determine_flux_l_pq([2,3],l_min = 1,l_max = 2,number = 100,resolution=150,image_s=4,s=3,sigma_t=0.05,type_w_t="GTR-R",window=0.3)
@@ -3205,6 +3362,8 @@ def runall ():
         #p_wrapper.make_image_with_mask(options=options,column="CORRECTED_DATA")
         #p_wrapper.flip_fits()
         #imager.make_image(column="CORRECTED_DATA",dirty=options,restore=options)
+        #imager.make_image(column="CORRECTED_DATA",dirty=options)
+        #p_wrapper.flip_fits()
         #imager.make_threshold_mask(threshold=0.001) # make mask 
         #imager.make_image(column="CORRECTED_DATA",dirty=options,mask=True,restore=options2)
 
